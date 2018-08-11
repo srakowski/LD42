@@ -5,13 +5,16 @@ using System.Linq;
 
 namespace LD42
 {
-    class MiningLogisticsGame
+    public class MiningLogisticsGame
     {
+        public GameBoard GameBoard { get; private set; }
+
         public IEnumerable Play()
         {
             var random = new Random();
-            var gameBoardMap = GameBoardMap.Create(random);
+            var gameBoardMap = GameBoard.Create(random);
 
+            GameBoard = gameBoardMap;
             yield return gameBoardMap;
 
             // draw cards from location deck until you have one that is not occupied by a mine

@@ -4,10 +4,11 @@ using System.Linq;
 
 namespace LD42
 {
-    static class GameConfiguration
+    static public class GameConfiguration
     {
         public const int WeeksToWin = 9;
         public const int WarehouseCapacityInResourceUnits = 13;
+        public const int WarehouseOverflowCapacityInResourceUnits = 3;
         public const int MaxResourceMiningCardValue = 4;
         public const int LocationCardsPerLocation = 10;
         public const int CorporationCardsPerCoporation = 10;
@@ -19,9 +20,9 @@ namespace LD42
         public const int PurchaseOrderOptionCount = 5;
     }
 
-    interface ICard { }
+    public interface ICard { }
 
-    abstract class Deck<T> where T : ICard
+    abstract public class Deck<T> where T : ICard
     {
         protected Random random;
         protected Queue<T> cards;
@@ -29,7 +30,6 @@ namespace LD42
         public Deck(Random random)
         {
             this.random = random;
-            ResetDeck();
         }
 
         public T DrawOne()
@@ -48,7 +48,7 @@ namespace LD42
         public abstract void ResetDeck();
     }
 
-    abstract class Resource
+    abstract public class Resource
     {
         public class Copper : Resource { }
         public class Zinc : Resource { }
@@ -56,11 +56,11 @@ namespace LD42
         public class Iron : Resource { }
     }
 
-    interface ILocationOccupant { }
+    public interface ILocationOccupant { }
 
-    class EmptyLocation : ILocationOccupant { }
+    public class EmptyLocation : ILocationOccupant { }
 
-    class Location
+    public class Location
     {
         public Location(string name, ILocationOccupant occupant)
         {
@@ -76,13 +76,13 @@ namespace LD42
         }
     }
 
-    struct LocationCard : ICard
+    public struct LocationCard : ICard
     {
         public LocationCard(Location location) => Location = location;
         public Location Location { get; }
     }
 
-    class LocationsDeck : Deck<LocationCard>
+    public class LocationsDeck : Deck<LocationCard>
     {
         private IEnumerable<Location> locations;
 
@@ -106,12 +106,12 @@ namespace LD42
         }
     }
 
-    class ResourceTransport
+    public class ResourceTransport
     {
         public IEnumerable<Resource> ResourceUnitsInTransit { get; private set; }
     }
 
-    enum RouteType
+    public enum RouteType
     {
         Ship,
         Train,
@@ -119,7 +119,7 @@ namespace LD42
         TruckOrTrain,
     }
 
-    class Route
+    public class Route
     {
 
         private List<ResourceTransport> _truckTransports = new List<ResourceTransport>();
@@ -140,11 +140,12 @@ namespace LD42
         public IEnumerable<ResourceTransport> TrainTransports => _trainTransports;
     }
 
-    class Warehouse : ILocationOccupant
+    public class Warehouse : ILocationOccupant
     {
         private List<Resource> unitsOfResources = new List<Resource>();
         private List<Resource> overflowUnitsOfResources = new List<Resource>();
         public int ResourceCapacityInUnits { get; } = GameConfiguration.WarehouseCapacityInResourceUnits;
+        public int OverflowCapacityInUnits { get; } = GameConfiguration.WarehouseOverflowCapacityInResourceUnits;
         public int TotalUnits => unitsOfResources.Count;
         public IEnumerable<Resource> UnitsOfResources => unitsOfResources;
 
@@ -157,7 +158,7 @@ namespace LD42
         }
     }
 
-    struct MineOutputCard : ICard
+    public struct MineOutputCard : ICard
     {
         public MineOutputCard(Mine mine, int resourceUnitsMined)
         {
@@ -168,7 +169,7 @@ namespace LD42
         public int ResourceUnitsMined { get; }
     }
 
-    class MineOutputsDeck : Deck<MineOutputCard>
+    public class MineOutputsDeck : Deck<MineOutputCard>
     {
         private Mine mine;
 
@@ -189,16 +190,17 @@ namespace LD42
         }
     }
 
-    abstract class Mine : ILocationOccupant
+    abstract public class Mine : ILocationOccupant
     {
         protected Mine(Random random) => Deck = new MineOutputsDeck(this, random);
         public MineOutputsDeck Deck { get; }
+        public abstract Warehouse Storage { get; }
         public abstract void Produce();
         public abstract void ProduceFromCard(MineOutputCard card);
         public abstract IEnumerable<Resource> GenerateResourcesForCard(MineOutputCard card);
     }
 
-    class Mine<T> : Mine where T : Resource, new()
+    public class Mine<T> : Mine where T : Resource, new()
     {
         public Mine(string name, Random random)
             : base(random)
@@ -209,7 +211,7 @@ namespace LD42
 
         public string Name { get; }
 
-        public Warehouse Storage { get; }
+        public override Warehouse Storage { get; }
 
         public override void Produce() =>
             ProduceFromCard(Deck.DrawOne());
@@ -222,7 +224,7 @@ namespace LD42
                 .Select(_ => Activator.CreateInstance<T>());
     }
 
-    class SaleCard : ICard
+    public class SaleCard : ICard
     {
         public int WeeksToFulfill { get; }
         public int UnitsOfCopper { get; }
@@ -231,9 +233,12 @@ namespace LD42
         public int UnitsOfIron { get; }
     }
 
-    class SalesDeck : Deck<SaleCard>
+    public class SalesDeck : Deck<SaleCard>
     {
-        public SalesDeck(Random random) : base(random) { }
+        public SalesDeck(Random random) : base(random)
+        {
+            ResetDeck();
+        }
 
         public override void ResetDeck()
         {
@@ -246,7 +251,7 @@ namespace LD42
         }
     }
 
-    class Corporation
+    public class Corporation
     {
         public Corporation(string name)
         {
@@ -255,7 +260,7 @@ namespace LD42
         public string Name { get; }
     }
 
-    struct CorporationCard : ICard
+    public struct CorporationCard : ICard
     {
         public CorporationCard(Corporation corporation)
         {
@@ -264,7 +269,7 @@ namespace LD42
         public Corporation Corporation { get; }
     }
 
-    class CorporationsDeck : Deck<CorporationCard>
+    public class CorporationsDeck : Deck<CorporationCard>
     {
         private IEnumerable<Corporation> corporations;
 
@@ -289,7 +294,7 @@ namespace LD42
     }
 
 
-    class PurchaseOrder
+    public class PurchaseOrder
     {
         public PurchaseOrder(
             CorporationCard corporationCard,
@@ -305,7 +310,7 @@ namespace LD42
         public LocationCard ShipToLocation { get; }
     }
 
-    class GameBoardMap
+    public class GameBoard
     {
         public const string Reno = "Reno";
         public const string Knoxville = "Knoxville";
@@ -324,7 +329,7 @@ namespace LD42
         public const string Billings = "Billings";
         public const string KansasCity = "Kansas City";
 
-        private GameBoardMap(
+        private GameBoard(
             IEnumerable<Mine> mines,
             IEnumerable<Location> locations,
             LocationsDeck locationDeck,
@@ -351,7 +356,7 @@ namespace LD42
         public PurchaseOrder[] ActivePurchaseOrders { get; } = new PurchaseOrder[3];
         public int ActivePurchaseOrderSlotCount => ActivePurchaseOrders.Length;
 
-        public static GameBoardMap Create(Random random)
+        public static GameBoard Create(Random random)
         {
             var duluthMine = new Mine<Resource.Iron>("North Star Iron Mine", random);
             var knoxvillMine = new Mine<Resource.Zinc>("Smokey Appalachian Zinc Mine", random);
@@ -436,7 +441,7 @@ namespace LD42
 
             var salesDeck = new SalesDeck(random);
 
-            return new GameBoardMap(mines,
+            return new GameBoard(mines,
                 locations, 
                 locationDeck,
                 corporations,
