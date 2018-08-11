@@ -15,6 +15,8 @@ namespace LD42
         public const int ResourceMiningCardsDrawnToStartTheGame = 3; // must be (InitialToMines + InitialToWarehouse) / mine locations
         public const int InitialResourcesToMines = 9;
         public const int InitialResourcesToWarehouse = 3;
+
+        public const int PurchaseOrderOptionCount = 5;
     }
 
     interface ICard { }
@@ -278,7 +280,7 @@ namespace LD42
                 corporations
                     .SelectMany(c => Enumerable
                         .Range(0, GameConfiguration.CorporationCardsPerCoporation)
-                        .Select(_ => new LocationCard(c))
+                        .Select(_ => new CorporationCard(c))
                     )
                     .OrderBy(i => random.Next())
                     .ToArray()
@@ -337,6 +339,7 @@ namespace LD42
             CorporationsDeck = corporationsDeck;
             SalesDeck = salesDeck;
             Routes = routes;
+
         }
 
         public IEnumerable<Mine> Mines { get; }
@@ -345,6 +348,8 @@ namespace LD42
         public CorporationsDeck CorporationsDeck { get; }
         public SalesDeck SalesDeck { get; }
         public IEnumerable<Route> Routes { get; }
+        public PurchaseOrder[] ActivePurchaseOrders { get; } = new PurchaseOrder[3];
+        public int ActivePurchaseOrderSlotCount => ActivePurchaseOrders.Length;
 
         public static GameBoardMap Create(Random random)
         {
@@ -431,7 +436,7 @@ namespace LD42
 
             var salesDeck = new SalesDeck(random);
 
-            return new GameBoardMap(mines, 
+            return new GameBoardMap(mines,
                 locations, 
                 locationDeck,
                 corporations,

@@ -12,6 +12,8 @@ namespace LD42
             var random = new Random();
             var gameBoardMap = GameBoardMap.Create(random);
 
+            yield return gameBoardMap;
+
             // draw cards from location deck until you have one that is not occupied by a mine
             LocationCard initialWarehouseCard;
             do
@@ -51,7 +53,48 @@ namespace LD42
                 warehouse.ReceiveResources(resources);
             }
 
+            yield return warehouse;
 
+            // draw 5 corporation cards and place them in a row
+            // foreach corporation card draw a sale card and place it next to the corporation
+            // foreach corporation card fraw a location card and place it next to the sale card
+            // these are 5 prospective sales, you must select 3 to fill active PO slots
+            var initialPOOptions = Enumerable
+                .Range(0, GameConfiguration.PurchaseOrderOptionCount)
+                .Select(_ => new PurchaseOrder(
+                    gameBoardMap.CorporationsDeck.DrawOne(),
+                    gameBoardMap.SalesDeck.DrawOne(),
+                    gameBoardMap.LocationsDeck.DrawOne()
+                ))
+                .ToArray();
+
+            var picks = new PickPurchaseOrders(initialPOOptions, gameBoardMap.ActivePurchaseOrderSlotCount);
+            yield return picks;
+
+            if (picks.SelectedPurchaseOrders.Count() != gameBoardMap.ActivePurchaseOrderSlotCount)
+                throw new Exception("did not make enough PO selections");
+
+            // move each purchase order to one of the active PO slots
+            var poQueue = new Queue<PurchaseOrder>(picks.SelectedPurchaseOrders);
+            for (int i = 0; i < gameBoardMap.ActivePurchaseOrderSlotCount; i++)
+                gameBoardMap.ActivePurchaseOrders[i] = poQueue.Dequeue();
         }
+    }
+
+    public abstract class PlayerInteraction { }
+
+    class PickPurchaseOrders : PlayerInteraction
+    {
+        private List<PurchaseOrder> _options;
+        private List<PurchaseOrder> _selected;
+        public PickPurchaseOrders(IEnumerable<PurchaseOrder> purchaseOrders, int selectCount)
+        {
+            SelectCount = selectCount;
+            _options = new List<PurchaseOrder>(purchaseOrders);
+            _selected = new List<PurchaseOrder>();
+        }
+        public int SelectCount { get; }
+        public IEnumerable<PurchaseOrder> PurchaseOrderOptions => _options;
+        public IEnumerable<PurchaseOrder> SelectedPurchaseOrders => _selected;
     }
 }
