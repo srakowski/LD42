@@ -7,13 +7,43 @@ namespace LD42
     static class GameConfiguration
     {
         public const int WeeksToWin = 9;
-        public const int ThirdPartySellOfCapacityInResourceUnits = 13;
         public const int WarehouseCapacityInResourceUnits = 13;
-        public const int CardsDrawnAtLowProductionLevel = 1;
-        public const int CardsDrawnAtMediumProductionLevel = 2;
-        public const int CardsDrawnAtHighProductionLevel = 3;
         public const int MaxResourceMiningCardValue = 4;
-        public const int ResourceMiningCardsDrawnToStartTheGame = 3;
+        public const int LocationCardsPerLocation = 10;
+        public const int CorporationCardsPerCoporation = 10;
+
+        public const int ResourceMiningCardsDrawnToStartTheGame = 3; // must be (InitialToMines + InitialToWarehouse) / mine locations
+        public const int InitialResourcesToMines = 9;
+        public const int InitialResourcesToWarehouse = 3;
+    }
+
+    interface ICard { }
+
+    abstract class Deck<T> where T : ICard
+    {
+        protected Random random;
+        protected Queue<T> cards;
+
+        public Deck(Random random)
+        {
+            this.random = random;
+            ResetDeck();
+        }
+
+        public T DrawOne()
+        {
+            var card = cards.Dequeue();
+            if (!cards.Any()) ResetDeck();
+            return card;
+        }
+
+        public IEnumerable<T> Draw(int count) =>
+            Enumerable
+                .Range(0, count)
+                .Select(_ => DrawOne())
+                .ToArray();
+
+        public abstract void ResetDeck();
     }
 
     abstract class Resource
@@ -24,20 +54,11 @@ namespace LD42
         public class Iron : Resource { }
     }
 
-    enum ProductionLevels
-    {
-        Low,
-        Medium,
-        High,
-    }
-
-    interface IGameBoardMapElement { }
-
     interface ILocationOccupant { }
 
     class EmptyLocation : ILocationOccupant { }
 
-    class Location : IGameBoardMapElement
+    class Location
     {
         public Location(string name, ILocationOccupant occupant)
         {
@@ -46,6 +67,41 @@ namespace LD42
         }
         public string Name { get; }
         public ILocationOccupant Occupant { get; private set; }
+        internal void SetOccupant(ILocationOccupant occupant)
+        {
+            if (!(this.Occupant is EmptyLocation)) throw new Exception("can't place over existing occupant");
+            Occupant = occupant;
+        }
+    }
+
+    struct LocationCard : ICard
+    {
+        public LocationCard(Location location) => Location = location;
+        public Location Location { get; }
+    }
+
+    class LocationsDeck : Deck<LocationCard>
+    {
+        private IEnumerable<Location> locations;
+
+        public LocationsDeck(IEnumerable<Location> locations, Random random) : base(random)
+        {
+            this.locations = locations;
+            ResetDeck();
+        }
+
+        public override void ResetDeck()
+        {
+            cards = new Queue<LocationCard>(
+                locations
+                    .SelectMany(l => Enumerable
+                        .Range(0, GameConfiguration.LocationCardsPerLocation)
+                        .Select(_ => new LocationCard(l))
+                    )
+                    .OrderBy(i => random.Next())
+                    .ToArray()
+            );
+        }
     }
 
     class ResourceTransport
@@ -85,13 +141,7 @@ namespace LD42
     class Warehouse : ILocationOccupant
     {
         private List<Resource> unitsOfResources = new List<Resource>();
-        private ThirdParties thirdParties;
-
-        public Warehouse(ThirdParties thirdParties)
-        {
-            this.thirdParties = thirdParties;
-        }
-
+        private List<Resource> overflowUnitsOfResources = new List<Resource>();
         public int ResourceCapacityInUnits { get; } = GameConfiguration.WarehouseCapacityInResourceUnits;
         public int TotalUnits => unitsOfResources.Count;
         public IEnumerable<Resource> UnitsOfResources => unitsOfResources;
@@ -101,85 +151,77 @@ namespace LD42
             var resourceQueue = new Queue<Resource>(resources);
             while (resourceQueue.Any() && TotalUnits < ResourceCapacityInUnits)
                 unitsOfResources.Add(resourceQueue.Dequeue());
-            thirdParties.ReceiveResources(resourceQueue);
+            overflowUnitsOfResources.AddRange(resourceQueue);
         }
     }
 
-    class ThirdParties
+    struct MineOutputCard : ICard
     {
-        private List<Resource> unitsOfResources = new List<Resource>();
-        public const int ResourceCapacityInUnits = GameConfiguration.ThirdPartySellOfCapacityInResourceUnits;
-        public IEnumerable<Resource> Resources => unitsOfResources;
-        internal void ReceiveResources(IEnumerable<Resource> excessResources) =>
-            unitsOfResources.AddRange(excessResources);
-    }
-
-    class MineOutputCard<T> where T : Resource, new()
-    {
-        public MineOutputCard(int resourceUnitsMined) => ResourceUnitsMined = resourceUnitsMined;
+        public MineOutputCard(Mine mine, int resourceUnitsMined)
+        {
+            Mine = mine;
+            ResourceUnitsMined = resourceUnitsMined;
+        }
+        public Mine Mine { get; }
         public int ResourceUnitsMined { get; }
     }
 
-    class MineOutputDeck<T> where T : Resource, new()
+    class MineOutputsDeck : Deck<MineOutputCard>
     {
-        private Queue<MineOutputCard<T>> cards;
-        public MineOutputDeck(Random random)
+        private Mine mine;
+
+        public MineOutputsDeck(Mine mine, Random random) : base(random)
         {
-            cards = new Queue<MineOutputCard<T>>(Enumerable.Range(0,
-                    GameConfiguration.CardsDrawnAtHighProductionLevel *
-                    GameConfiguration.WeeksToWin
-                )
-                .Select((i) => new MineOutputCard<T>(
-                    (i % GameConfiguration.MaxResourceMiningCardValue) + GameConfiguration.ResourceMiningCardsDrawnToStartTheGame)
-                )
+            this.mine = mine;
+            ResetDeck();
+        }
+
+        public override void ResetDeck()
+        {
+            cards = new Queue<MineOutputCard>(Enumerable
+                .Range(0, 100)
+                .Select((i) => new MineOutputCard(mine, (i % GameConfiguration.MaxResourceMiningCardValue) + 1))
                 .OrderBy(i => random.Next())
+                .ToArray()
             );
         }
-        public MineOutputCard<T> DrawOne() => cards.Dequeue();
     }
 
-    abstract class Mine : ILocationOccupant { }
+    abstract class Mine : ILocationOccupant
+    {
+        protected Mine(Random random) => Deck = new MineOutputsDeck(this, random);
+        public MineOutputsDeck Deck { get; }
+        public abstract void Produce();
+        public abstract void ProduceFromCard(MineOutputCard card);
+        public abstract IEnumerable<Resource> GenerateResourcesForCard(MineOutputCard card);
+    }
 
     class Mine<T> : Mine where T : Resource, new()
     {
-        public Mine(string name, Random random, ThirdParties thirdParties)
+        public Mine(string name, Random random)
+            : base(random)
         {
             Name = name;
-            ProductionLevel = ProductionLevels.High;
-            Deck = new MineOutputDeck<T>(random);
-            Storage = new Warehouse(thirdParties);
+            Storage = new Warehouse();
         }
 
         public string Name { get; }
-        public ProductionLevels ProductionLevel { get; private set; }
-        public MineOutputDeck<T> Deck { get; }
+
         public Warehouse Storage { get; }
 
-        public void Produce()
-        {
-            var unitsProduced = ProductionLevel == ProductionLevels.High
-                ? GameConfiguration.CardsDrawnAtHighProductionLevel
-                : ProductionLevel == ProductionLevels.Medium
-                ? GameConfiguration.CardsDrawnAtMediumProductionLevel
-                : ProductionLevel == ProductionLevels.Low
-                ? GameConfiguration.CardsDrawnAtLowProductionLevel
-                : throw new Exception("you changed the production levels");
+        public override void Produce() =>
+            ProduceFromCard(Deck.DrawOne());
 
-            Storage.ReceiveResources(
-                Enumerable.Range(0,
-                    Enumerable
-                        .Range(0, unitsProduced)
-                        .Select(_ => Deck.DrawOne())
-                        .Aggregate(0, (total, card) => total + card.ResourceUnitsMined)
-                )
-                .Select(_ => Activator.CreateInstance<T>())
-            );
-        }
+        public override void ProduceFromCard(MineOutputCard card) =>
+            Storage.ReceiveResources(GenerateResourcesForCard(card));
+
+        public override IEnumerable<Resource> GenerateResourcesForCard(MineOutputCard card) =>
+            Enumerable.Range(0, card.ResourceUnitsMined)
+                .Select(_ => Activator.CreateInstance<T>());
     }
 
-    class SaleCard
+    class SaleCard : ICard
     {
-        public string DeliverToLocation { get; }
         public int WeeksToFulfill { get; }
         public int UnitsOfCopper { get; }
         public int UnitsOfZinc { get; }
@@ -187,50 +229,129 @@ namespace LD42
         public int UnitsOfIron { get; }
     }
 
+    class SalesDeck : Deck<SaleCard>
+    {
+        public SalesDeck(Random random) : base(random) { }
+
+        public override void ResetDeck()
+        {
+            cards = new Queue<SaleCard>(Enumerable
+                .Range(0, 100)
+                .Select(_ => new SaleCard())
+                .OrderBy(i => random.Next())
+                .ToArray()
+            );
+        }
+    }
+
+    class Corporation
+    {
+        public Corporation(string name)
+        {
+            Name = name;
+        }
+        public string Name { get; }
+    }
+
+    struct CorporationCard : ICard
+    {
+        public CorporationCard(Corporation corporation)
+        {
+            Corporation = corporation;
+        }
+        public Corporation Corporation { get; }
+    }
+
+    class CorporationsDeck : Deck<CorporationCard>
+    {
+        private IEnumerable<Corporation> corporations;
+
+        public CorporationsDeck(IEnumerable<Corporation> corporations, Random random) : base(random)
+        {
+            this.corporations = corporations;
+            ResetDeck();
+        }
+
+        public override void ResetDeck()
+        {
+            cards = new Queue<CorporationCard>(
+                corporations
+                    .SelectMany(c => Enumerable
+                        .Range(0, GameConfiguration.CorporationCardsPerCoporation)
+                        .Select(_ => new LocationCard(c))
+                    )
+                    .OrderBy(i => random.Next())
+                    .ToArray()
+            );
+        }
+    }
+
+
     class PurchaseOrder
     {
-        private SaleCard sale;
-
-        public PurchaseOrder(SaleCard sale)
+        public PurchaseOrder(
+            CorporationCard corporationCard,
+            SaleCard saleCard,
+            LocationCard shipToLocation)
         {
-            this.sale = sale;
+            Corporation = corporationCard;
+            Sale = saleCard;
+            ShipToLocation = shipToLocation;
         }
+        public CorporationCard Corporation { get; }
+        public SaleCard Sale { get; }
+        public LocationCard ShipToLocation { get; }
     }
 
     class GameBoardMap
     {
-        const string Reno = "Reno";
-        const string Knoxville = "Knoxville";
-        const string Tuscon = "Tuscon";
-        const string Duluth = "Duluth";
-        const string Denver = "Denver";
-        const string LosAngeles = "Los Angeles";
-        const string Detroit = "Detroit";
-        const string Houston = "Houston";
-        const string Seattle = "Seattle";
-        const string Jacksonville = "Jacksonville";
-        const string Boston = "Boston";
-        const string Indianapolis = "Indianapolis";
-        const string NewOrleans = "New Orleans";
-        const string SaltLakeCity = "Salt Lake City";
-        const string Billings = "Billings";
-        const string KansasCity = "Kansas City";
+        public const string Reno = "Reno";
+        public const string Knoxville = "Knoxville";
+        public const string Tuscon = "Tuscon";
+        public const string Duluth = "Duluth";
+        public const string Denver = "Denver";
+        public const string LosAngeles = "Los Angeles";
+        public const string Detroit = "Detroit";
+        public const string Houston = "Houston";
+        public const string Seattle = "Seattle";
+        public const string Jacksonville = "Jacksonville";
+        public const string Boston = "Boston";
+        public const string Indianapolis = "Indianapolis";
+        public const string NewOrleans = "New Orleans";
+        public const string SaltLakeCity = "Salt Lake City";
+        public const string Billings = "Billings";
+        public const string KansasCity = "Kansas City";
 
-        private GameBoardMap(IEnumerable<IGameBoardMapElement> mapElements)
+        private GameBoardMap(
+            IEnumerable<Mine> mines,
+            IEnumerable<Location> locations,
+            LocationsDeck locationDeck,
+            IEnumerable<Corporation> corporations,
+            CorporationsDeck corporationsDeck,
+            SalesDeck salesDeck,
+            IEnumerable<Route> routes)
         {
-            MapElements = mapElements;
+            Mines = mines;
+            Locations = locations;
+            LocationsDeck = locationDeck;
+            CorporationsDeck = corporationsDeck;
+            SalesDeck = salesDeck;
+            Routes = routes;
         }
 
-        public IEnumerable<IGameBoardMapElement> MapElements { get; }
+        public IEnumerable<Mine> Mines { get; }
+        public IEnumerable<Location> Locations { get; }
+        public LocationsDeck LocationsDeck { get; }
+        public CorporationsDeck CorporationsDeck { get; }
+        public SalesDeck SalesDeck { get; }
+        public IEnumerable<Route> Routes { get; }
 
         public static GameBoardMap Create(Random random)
         {
-            var tp = new ThirdParties();
-
-            var duluthMine = new Mine<Resource.Iron>("North Star Iron Mine", random, tp);
-            var knoxvillMine = new Mine<Resource.Zinc>("Smokey Appalachian Zinc Mine", random, tp);
-            var tusconMine = new Mine<Resource.Copper>("Great Canyon State Copper Mine", random, tp);
-            var renoMine = new Mine<Resource.Silver>("Five Card Silver Mine", random, tp);
+            var duluthMine = new Mine<Resource.Iron>("North Star Iron Mine", random);
+            var knoxvillMine = new Mine<Resource.Zinc>("Smokey Appalachian Zinc Mine", random);
+            var tusconMine = new Mine<Resource.Copper>("Great Canyon State Copper Mine", random);
+            var renoMine = new Mine<Resource.Silver>("Five Card Silver Mine", random);
 
             var mines = new Mine[]
             {
@@ -262,7 +383,7 @@ namespace LD42
 
             var ll = locations.ToDictionary((l) => l.Name);
 
-            var route = new Route[]
+            var routes = new Route[]
             {
                 new Route(RouteType.Ship, ll[Seattle], ll[LosAngeles]),
                 new Route(RouteType.TruckOrTrain, ll[Seattle], ll[Reno]),
@@ -297,9 +418,26 @@ namespace LD42
                 new Route(RouteType.Truck, ll[Detroit], ll[Indianapolis]),
             };
 
+            var locationDeck = new LocationsDeck(locations, random);
 
+            var corporations = new[]
+            {
+                new Corporation("LuDare Enterprises"),
+                new Corporation("SparkTech Industries"),
+                new Corporation("Adico"),
+            };
 
-            return new GameBoardMap();
+            var corporationsDeck = new CorporationsDeck(corporations, random);
+
+            var salesDeck = new SalesDeck(random);
+
+            return new GameBoardMap(mines, 
+                locations, 
+                locationDeck,
+                corporations,
+                corporationsDeck,
+                salesDeck,
+                routes);
         }
     }
 }
