@@ -29,9 +29,9 @@
         private void InitializeComponent()
         {
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.card1 = new PrototypeWinFormsUI.CardControl();
-            this.card2 = new PrototypeWinFormsUI.CardControl();
             this.card3 = new PrototypeWinFormsUI.CardControl();
+            this.card2 = new PrototypeWinFormsUI.CardControl();
+            this.card1 = new PrototypeWinFormsUI.CardControl();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -47,14 +47,14 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Purchase Order";
             // 
-            // card1
+            // card3
             // 
-            this.card1.CardType = "groupBox1";
-            this.card1.Description = "";
-            this.card1.Location = new System.Drawing.Point(6, 19);
-            this.card1.Name = "card1";
-            this.card1.Size = new System.Drawing.Size(120, 150);
-            this.card1.TabIndex = 0;
+            this.card3.CardType = "groupBox1";
+            this.card3.Description = "";
+            this.card3.Location = new System.Drawing.Point(258, 19);
+            this.card3.Name = "card3";
+            this.card3.Size = new System.Drawing.Size(120, 150);
+            this.card3.TabIndex = 2;
             // 
             // card2
             // 
@@ -65,21 +65,21 @@
             this.card2.Size = new System.Drawing.Size(120, 150);
             this.card2.TabIndex = 1;
             // 
-            // card3
+            // card1
             // 
-            this.card3.CardType = "groupBox1";
-            this.card3.Description = "";
-            this.card3.Location = new System.Drawing.Point(258, 19);
-            this.card3.Name = "card3";
-            this.card3.Size = new System.Drawing.Size(120, 150);
-            this.card3.TabIndex = 2;
+            this.card1.CardType = "groupBox1";
+            this.card1.Description = "";
+            this.card1.Location = new System.Drawing.Point(6, 19);
+            this.card1.Name = "card1";
+            this.card1.Size = new System.Drawing.Size(120, 150);
+            this.card1.TabIndex = 0;
             // 
-            // PurchaseOrder
+            // PurchaseOrderControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.groupBox1);
-            this.Name = "PurchaseOrder";
+            this.Name = "PurchaseOrderControl";
             this.Size = new System.Drawing.Size(391, 271);
             this.groupBox1.ResumeLayout(false);
             this.ResumeLayout(false);

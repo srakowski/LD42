@@ -22,9 +22,12 @@ namespace LD42
             do
             {
                 initialWarehouseCard = gameBoardMap.LocationsDeck.DrawOne();
+                if (!(initialWarehouseCard.Location.Occupant is EmptyLocation))
+                    yield return new ShowRejectedCard(initialWarehouseCard);
+
             } while (!(initialWarehouseCard.Location.Occupant is EmptyLocation));
 
-            yield return initialWarehouseCard;
+            yield return new ShowAcceptedCard(initialWarehouseCard);
 
             // once you get a location place the warehouse & reset the location deck
             var warehouse = new Warehouse();
@@ -37,26 +40,22 @@ namespace LD42
                 .OrderBy(_ => random.Next())
                 .ToArray());
 
-            yield return cardQueue;
-
             // the first y cards drawn, add resources to the respective mines
             for (int y = 0; y < GameConfiguration.InitialResourcesToMines; y++)
             {
                 var nextCard = cardQueue.Dequeue();
+                yield return new ShowAcceptedCard(nextCard);
                 nextCard.Mine.ProduceFromCard(nextCard);
             }
-
-            yield return cardQueue;
 
             // generate resources for the remaining z cards and put them in the warehouse
             for (int z = 0; z < GameConfiguration.InitialResourcesToWarehouse; z++)
             {
                 var nextCard = cardQueue.Dequeue();
+                yield return new ShowAcceptedCard(nextCard);
                 var resources = nextCard.Mine.GenerateResourcesForCard(nextCard);
                 warehouse.ReceiveResources(resources);
             }
-
-            yield return warehouse;
 
             // draw 5 corporation cards and place them in a row
             // foreach corporation card draw a sale card and place it next to the corporation
@@ -81,12 +80,37 @@ namespace LD42
             var poQueue = new Queue<PurchaseOrder>(picks.SelectedPurchaseOrders);
             for (int i = 0; i < gameBoardMap.ActivePurchaseOrderSlotCount; i++)
                 gameBoardMap.ActivePurchaseOrders[i] = poQueue.Dequeue();
+
+            for (int rounds = 0; rounds < GameConfiguration.ActionPointsPerRound; rounds++)
+            {
+                var playerActionRequest = new RequestPlayerAction();
+                yield return playerActionRequest;
+            }
         }
     }
 
     public abstract class PlayerInteraction { }
 
-    class PickPurchaseOrders : PlayerInteraction
+    public class ShowCard
+    {
+        public ShowCard(ICard card)
+        {
+            Card = card;
+        }
+        public ICard Card { get; }
+    }
+
+    public class ShowRejectedCard : ShowCard
+    {
+        public ShowRejectedCard(ICard card) : base(card) { }
+    }
+
+    public class ShowAcceptedCard : ShowCard
+    {
+        public ShowAcceptedCard(ICard card) : base(card) { }
+    }
+
+    public class PickPurchaseOrders : PlayerInteraction
     {
         private List<PurchaseOrder> _options;
         private List<PurchaseOrder> _selected;
@@ -99,5 +123,14 @@ namespace LD42
         public int SelectCount { get; }
         public IEnumerable<PurchaseOrder> PurchaseOrderOptions => _options;
         public IEnumerable<PurchaseOrder> SelectedPurchaseOrders => _selected;
+        public void AddSelection(PurchaseOrder purchaseOrder) => _selected.Add(purchaseOrder);
+        public void RemoveSelection(PurchaseOrder purchaseOrder) => _selected.Remove(purchaseOrder);
+    }
+
+    public class PlayerAction { }
+
+    public class RequestPlayerAction : PlayerInteraction
+    {
+        public PlayerAction Action { get; set; }
     }
 }

@@ -18,9 +18,22 @@ namespace LD42
         public const int InitialResourcesToWarehouse = 3;
 
         public const int PurchaseOrderOptionCount = 5;
+
+        public const int MinDeliveryTime = 1;
+        public const int ModDeliveryTime = 4;
+
+        public const int IronHeavySale = 0;
+        public const int SilverHeavySale = 1;
+        public const int CopperHeavySale = 2;
+        public const int ZincHeavySale = 3;
+
+        public const int ActionPointsPerRound = 5;
     }
 
-    public interface ICard { }
+    public interface ICard
+    {
+        string Description { get; }
+    }
 
     abstract public class Deck<T> where T : ICard
     {
@@ -80,6 +93,7 @@ namespace LD42
     {
         public LocationCard(Location location) => Location = location;
         public Location Location { get; }
+        public string Description => this.Location.Name;
     }
 
     public class LocationsDeck : Deck<LocationCard>
@@ -167,6 +181,7 @@ namespace LD42
         }
         public Mine Mine { get; }
         public int ResourceUnitsMined { get; }
+        public string Description => $"{Mine.ResourceTypeDescription} x {ResourceUnitsMined}";
     }
 
     public class MineOutputsDeck : Deck<MineOutputCard>
@@ -195,6 +210,8 @@ namespace LD42
         protected Mine(Random random) => Deck = new MineOutputsDeck(this, random);
         public MineOutputsDeck Deck { get; }
         public abstract Warehouse Storage { get; }
+        public abstract string ResourceTypeDescription { get; }
+
         public abstract void Produce();
         public abstract void ProduceFromCard(MineOutputCard card);
         public abstract IEnumerable<Resource> GenerateResourcesForCard(MineOutputCard card);
@@ -213,6 +230,8 @@ namespace LD42
 
         public override Warehouse Storage { get; }
 
+        public override string ResourceTypeDescription => typeof(T).Name;
+
         public override void Produce() =>
             ProduceFromCard(Deck.DrawOne());
 
@@ -226,11 +245,29 @@ namespace LD42
 
     public class SaleCard : ICard
     {
-        public int WeeksToFulfill { get; }
-        public int UnitsOfCopper { get; }
-        public int UnitsOfZinc { get; }
-        public int UnitsOfSilver { get; }
-        public int UnitsOfIron { get; }
+        public SaleCard(int requestedInXRounds,
+            int requestedCopper,
+            int requestedZinc,
+            int requestedSilver,
+            int requestedIron)
+        {
+            RequestedInXRounds = requestedInXRounds;
+            RequestedCopper = requestedCopper;
+            RequestedZinc = requestedZinc;
+            RequestedSilver = requestedSilver;
+            RequestedIron = requestedIron;
+        }
+        public int RequestedInXRounds { get; }
+        public int RequestedCopper { get; }
+        public int RequestedZinc { get; }
+        public int RequestedSilver { get; }
+        public int RequestedIron { get; }
+        public string Description => 
+            $"Rounds: {RequestedInXRounds}\n" +
+            $"Copper: {RequestedCopper}\n" +
+            $"Zinc: {RequestedZinc}\n" +
+            $"Silver: {RequestedSilver}\n" +
+            $"Iron: {RequestedIron}\n";
     }
 
     public class SalesDeck : Deck<SaleCard>
@@ -244,10 +281,21 @@ namespace LD42
         {
             cards = new Queue<SaleCard>(Enumerable
                 .Range(0, 100)
-                .Select(_ => new SaleCard())
+                .Select(i => new SaleCard(
+                    (i % GameConfiguration.ModDeliveryTime) + GameConfiguration.MinDeliveryTime,
+                    requestedCopper: CalcStartResource(i, GameConfiguration.CopperHeavySale),
+                    requestedZinc: CalcStartResource(i, GameConfiguration.ZincHeavySale),
+                    requestedSilver: CalcStartResource(i, GameConfiguration.SilverHeavySale),
+                    requestedIron: CalcStartResource(i, GameConfiguration.IronHeavySale)
+                    ))
                 .OrderBy(i => random.Next())
                 .ToArray()
             );
+        }
+
+        private static int CalcStartResource(int i, int hs)
+        {
+            return 1 + (i % 4 == hs ? 2 : 0) + (i / 13);
         }
     }
 
@@ -267,6 +315,7 @@ namespace LD42
             Corporation = corporation;
         }
         public Corporation Corporation { get; }
+        public string Description => Corporation.Name;
     }
 
     public class CorporationsDeck : Deck<CorporationCard>

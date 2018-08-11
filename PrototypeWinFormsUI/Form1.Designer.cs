@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.splitContainer2 = new System.Windows.Forms.SplitContainer();
+            this.mapAndMessageContainer = new System.Windows.Forms.SplitContainer();
             this.label4 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
@@ -58,9 +58,9 @@
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
-            this.splitContainer2.Panel1.SuspendLayout();
-            this.splitContainer2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.mapAndMessageContainer)).BeginInit();
+            this.mapAndMessageContainer.Panel1.SuspendLayout();
+            this.mapAndMessageContainer.SuspendLayout();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -71,7 +71,7 @@
             // 
             // splitContainer1.Panel1
             // 
-            this.splitContainer1.Panel1.Controls.Add(this.splitContainer2);
+            this.splitContainer1.Panel1.Controls.Add(this.mapAndMessageContainer);
             // 
             // splitContainer1.Panel2
             // 
@@ -83,40 +83,40 @@
             this.splitContainer1.SplitterDistance = 1497;
             this.splitContainer1.TabIndex = 0;
             // 
-            // splitContainer2
+            // mapAndMessageContainer
             // 
-            this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer2.Location = new System.Drawing.Point(0, 0);
-            this.splitContainer2.Name = "splitContainer2";
-            this.splitContainer2.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            this.mapAndMessageContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.mapAndMessageContainer.Location = new System.Drawing.Point(0, 0);
+            this.mapAndMessageContainer.Name = "mapAndMessageContainer";
+            this.mapAndMessageContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
-            // splitContainer2.Panel1
+            // mapAndMessageContainer.Panel1
             // 
-            this.splitContainer2.Panel1.BackgroundImage = global::PrototypeWinFormsUI.Properties.Resources.USMAP;
-            this.splitContainer2.Panel1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
-            this.splitContainer2.Panel1.Controls.Add(this.label4);
-            this.splitContainer2.Panel1.Controls.Add(this.label3);
-            this.splitContainer2.Panel1.Controls.Add(this.label2);
-            this.splitContainer2.Panel1.Controls.Add(this.label1);
-            this.splitContainer2.Panel1.Controls.Add(this.kansasCityLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.knoxvilleLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.indianaoplisLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.detroitLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.bostonLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.jacksonvilleLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.newOrleansLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.duluthLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.houstonLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.denverLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.renoLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.saltLakeCityLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.billingsLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.seattleLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.lostAngelesLocation);
-            this.splitContainer2.Panel1.Controls.Add(this.tusconLocation);
-            this.splitContainer2.Size = new System.Drawing.Size(1497, 1041);
-            this.splitContainer2.SplitterDistance = 804;
-            this.splitContainer2.TabIndex = 0;
+            this.mapAndMessageContainer.Panel1.BackgroundImage = global::PrototypeWinFormsUI.Properties.Resources.USMAP;
+            this.mapAndMessageContainer.Panel1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.label4);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.label3);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.label2);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.label1);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.kansasCityLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.knoxvilleLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.indianaoplisLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.detroitLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.bostonLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.jacksonvilleLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.newOrleansLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.duluthLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.houstonLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.denverLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.renoLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.saltLakeCityLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.billingsLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.seattleLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.lostAngelesLocation);
+            this.mapAndMessageContainer.Panel1.Controls.Add(this.tusconLocation);
+            this.mapAndMessageContainer.Size = new System.Drawing.Size(1497, 1041);
+            this.mapAndMessageContainer.SplitterDistance = 804;
+            this.mapAndMessageContainer.TabIndex = 0;
             // 
             // label4
             // 
@@ -378,10 +378,10 @@
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
-            this.splitContainer2.Panel1.ResumeLayout(false);
-            this.splitContainer2.Panel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
-            this.splitContainer2.ResumeLayout(false);
+            this.mapAndMessageContainer.Panel1.ResumeLayout(false);
+            this.mapAndMessageContainer.Panel1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.mapAndMessageContainer)).EndInit();
+            this.mapAndMessageContainer.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -389,7 +389,7 @@
         #endregion
 
         private System.Windows.Forms.SplitContainer splitContainer1;
-        private System.Windows.Forms.SplitContainer splitContainer2;
+        private System.Windows.Forms.SplitContainer mapAndMessageContainer;
         private LocationControl knoxvilleLocation;
         private LocationControl indianaoplisLocation;
         private LocationControl detroitLocation;
