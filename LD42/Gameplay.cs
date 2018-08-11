@@ -81,9 +81,9 @@ namespace LD42
             for (int i = 0; i < gameBoardMap.ActivePurchaseOrderSlotCount; i++)
                 gameBoardMap.ActivePurchaseOrders[i] = poQueue.Dequeue();
 
-            for (int rounds = 0; rounds < GameConfiguration.ActionPointsPerRound; rounds++)
+            for (int round = 0; round < GameConfiguration.ActionPointsPerRound; round++)
             {
-                var playerActionRequest = new RequestPlayerAction();
+                var playerActionRequest = new PlayerActionRequest($"Round {round + 1}: initiate resource moves", round == 0);
                 yield return playerActionRequest;
             }
         }
@@ -129,8 +129,52 @@ namespace LD42
 
     public class PlayerAction { }
 
-    public class RequestPlayerAction : PlayerInteraction
+    public class PlayerActionRequest : PlayerInteraction
     {
+        public PlayerActionRequest(string description, bool mayBuildWarehouse)
+        {
+            MayBuildWarehouse = mayBuildWarehouse;
+            Description = description;
+        }
+        public bool MayBuildWarehouse { get; }
+        public string Description { get; }
         public PlayerAction Action { get; set; }
+    }
+
+    public class ShipResourceAction : PlayerAction
+    {
+        public ShipResourceAction(Route route, IEnumerable<Resource> resourceUnits, Location from, Location to, ShippingMethods method)
+        {
+            Route = route;
+            ResourceUnits = resourceUnits;
+            FromLocation = from;
+            ToLocation = to;
+            Method = method;
+        }
+        public Route Route { get; }
+        public IEnumerable<Resource> ResourceUnits { get; }
+        public Location FromLocation { get; }
+        public Location ToLocation { get; }
+        public ShippingMethods Method { get; }
+    }
+
+    public class FulfillPurchaseOrder : PlayerAction
+    {
+        public FulfillPurchaseOrder(PurchaseOrder purchaseOrder, IEnumerable<Resource> resourceUnits)
+        {
+            PurchaseOrder = purchaseOrder;
+            ResourceUnits = resourceUnits;
+        }
+        public PurchaseOrder PurchaseOrder { get; }
+        public IEnumerable<Resource> ResourceUnits { get; }
+    }
+
+    public class BuildWarehouse : PlayerAction
+    {
+        BuildWarehouse(Location location)
+        {
+            Location = location;
+        }
+        public Location Location { get; set; }
     }
 }

@@ -16,6 +16,8 @@ namespace PrototypeWinFormsUI
         private MiningLogisticsGame game;
         private IEnumerator play;
 
+        private PlayerActionRequest playerActionRequest;
+
         private Control MessageControl
         {
             get => mapAndMessageContainer.Panel2.Controls.Count > 0 ? mapAndMessageContainer.Panel2.Controls[0] : null;
@@ -51,6 +53,11 @@ namespace PrototypeWinFormsUI
                 detroitLocation,
             };
 
+            foreach (var lc in locationControls)
+            {
+                lc.Click += location_Click;
+            }
+
             purchaseOrderControls = new[]
             {
                 purchaseOrder1,
@@ -74,10 +81,11 @@ namespace PrototypeWinFormsUI
             foreach (var loc in mineLocations)
             {
                 var control = locationControls.Where(l => l.Tag == loc.Name).FirstOrDefault();
-                control.HasWarehouse = true;
                 var wh = loc.Occupant is Mine m ? m.Storage :
                     loc.Occupant is Warehouse w ? w :
                     null;
+                control.BoardLocation = loc;
+                control.Warehouse = wh;
 
                 foreach (var cb in control.resourceChecboxes)
                 {
@@ -110,7 +118,7 @@ namespace PrototypeWinFormsUI
                 {
                     cc.BackColor = Color.Green;
                 }
-                else  if (play.Current is ShowRejectedCard)
+                else if (play.Current is ShowRejectedCard)
                 {
                     cc.BackColor = Color.Red;
                 }
@@ -122,6 +130,13 @@ namespace PrototypeWinFormsUI
                 var form = new PurchaseOrderPickerForm(ppo);
                 form.ShowDialog();
                 play.MoveNext();
+            }
+
+            if (play.Current is PlayerActionRequest par)
+            {
+                playerActionRequest = par;
+                button1.Visible = false;
+                MessageControl = new Label { Text = par.Description };
             }
 
             for (int i = 0; i < game.GameBoard.ActivePurchaseOrders.Length; i++)
@@ -146,6 +161,18 @@ namespace PrototypeWinFormsUI
         private void button1_Click(object sender, EventArgs e)
         {
             Next();
+        }
+
+        private void location_Click(object sender, EventArgs e)
+        {
+            if (playerActionRequest == null) return;
+            var lc = sender as LocationControl;
+            if (!lc.HasWarehouse) return;
+            MessageControl = new PlayerActionsControl(
+                () =>
+                {
+                    MessageControl = new DestinationPickerControl(lc.BoardLocation, lc.Warehouse);
+                });
         }
     }
 }

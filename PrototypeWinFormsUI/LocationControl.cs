@@ -1,16 +1,29 @@
-﻿using System.Windows.Forms;
+﻿using LD42;
+using System.Windows.Forms;
 
 namespace PrototypeWinFormsUI
 {
     public partial class LocationControl : UserControl
     {
+        private Warehouse _warehouse;
+
         public readonly CheckBox[] resourceChecboxes;
+
+        public Warehouse Warehouse
+        {
+            get => _warehouse;
+            set
+            {
+                _warehouse = value;
+                Visible = value != null;
+            }
+        }
 
         public bool HasWarehouse
         {
-            get => Visible;
-            set => Visible = value;
+            get => Warehouse != null;
         }
+        public Location BoardLocation { get; internal set; }
 
         public LocationControl()
         {

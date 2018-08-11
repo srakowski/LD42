@@ -75,6 +75,8 @@ namespace LD42
 
     public class Location
     {
+        private List<Route> _routes = new List<Route>();
+
         public Location(string name, ILocationOccupant occupant)
         {
             Name = name;
@@ -82,11 +84,18 @@ namespace LD42
         }
         public string Name { get; }
         public ILocationOccupant Occupant { get; private set; }
+        public IEnumerable<Route> Routes => _routes;
+
+        public IEnumerable<Location> Destinations => _routes.Select(r => r.Location1 == this ? r.Location2 : r.Location1).ToArray();
+
         internal void SetOccupant(ILocationOccupant occupant)
         {
             if (!(this.Occupant is EmptyLocation)) throw new Exception("can't place over existing occupant");
             Occupant = occupant;
         }
+
+        internal void AddRoute(Route route) =>
+            _routes.Add(route);
     }
 
     public struct LocationCard : ICard
@@ -125,12 +134,12 @@ namespace LD42
         public IEnumerable<Resource> ResourceUnitsInTransit { get; private set; }
     }
 
-    public enum RouteType
+    [Flags]
+    public enum ShippingMethods
     {
         Ship,
         Train,
         Truck,
-        TruckOrTrain,
     }
 
     public class Route
@@ -139,19 +148,25 @@ namespace LD42
         private List<ResourceTransport> _truckTransports = new List<ResourceTransport>();
         private List<ResourceTransport> _trainTransports = new List<ResourceTransport>();
 
-        public Route(RouteType routeType, Location l1, Location l2)
+        public Route(ShippingMethods routeType, Location l1, Location l2)
         {
             RouteType = routeType;
             Location1 = l1;
             Location2 = l2;
         }
 
-        private RouteType RouteType { get; }
+        private ShippingMethods RouteType { get; }
         public Location Location1 { get; }
         public Location Location2 { get; }
         
         public IEnumerable<ResourceTransport> TruckTransports => _truckTransports;
         public IEnumerable<ResourceTransport> TrainTransports => _trainTransports;
+
+        internal void BindLocationRoutes()
+        {
+            Location1.AddRoute(this);
+            Location2.AddRoute(this);
+        }
     }
 
     public class Warehouse : ILocationOccupant
@@ -444,38 +459,40 @@ namespace LD42
 
             var routes = new Route[]
             {
-                new Route(RouteType.Ship, ll[Seattle], ll[LosAngeles]),
-                new Route(RouteType.TruckOrTrain, ll[Seattle], ll[Reno]),
-                new Route(RouteType.TruckOrTrain, ll[Seattle], ll[SaltLakeCity]),
-                new Route(RouteType.TruckOrTrain, ll[Seattle], ll[Billings]),
-                new Route(RouteType.TruckOrTrain, ll[Reno], ll[SaltLakeCity]),
-                new Route(RouteType.TruckOrTrain, ll[Reno], ll[LosAngeles]),
-                new Route(RouteType.TruckOrTrain, ll[LosAngeles], ll[SaltLakeCity]),
-                new Route(RouteType.TruckOrTrain, ll[LosAngeles], ll[Tuscon]),
-                new Route(RouteType.TruckOrTrain, ll[SaltLakeCity], ll[Billings]),
-                new Route(RouteType.TruckOrTrain, ll[SaltLakeCity], ll[Tuscon]),
-                new Route(RouteType.TruckOrTrain, ll[SaltLakeCity], ll[Denver]),
-                new Route(RouteType.TruckOrTrain, ll[Tuscon], ll[Denver]),
-                new Route(RouteType.TruckOrTrain, ll[Billings], ll[Denver]),
-                new Route(RouteType.Train, ll[Tuscon], ll[Houston]),
-                new Route(RouteType.Train, ll[Billings], ll[Duluth]),
-                new Route(RouteType.TruckOrTrain, ll[Denver], ll[KansasCity]),
-                new Route(RouteType.TruckOrTrain, ll[Duluth], ll[KansasCity]),
-                new Route(RouteType.Ship, ll[Duluth], ll[Detroit]),
-                new Route(RouteType.TruckOrTrain, ll[Duluth], ll[Indianapolis]),
-                new Route(RouteType.TruckOrTrain, ll[KansasCity], ll[Indianapolis]),
-                new Route(RouteType.TruckOrTrain, ll[KansasCity], ll[NewOrleans]),
-                new Route(RouteType.TruckOrTrain, ll[KansasCity], ll[Houston]),
-                new Route(RouteType.TruckOrTrain, ll[Houston], ll[NewOrleans]),
-                new Route(RouteType.Ship, ll[NewOrleans], ll[Jacksonville]),
-                new Route(RouteType.TruckOrTrain, ll[NewOrleans], ll[Knoxville]),
-                new Route(RouteType.TruckOrTrain, ll[Jacksonville], ll[Knoxville]),
-                new Route(RouteType.TruckOrTrain, ll[Indianapolis], ll[Knoxville]),
-                new Route(RouteType.Train, ll[Boston], ll[Indianapolis]),
-                new Route(RouteType.Ship, ll[Detroit], ll[Boston]),
-                new Route(RouteType.Ship, ll[Jacksonville], ll[Boston]),
-                new Route(RouteType.Truck, ll[Detroit], ll[Indianapolis]),
+                new Route(ShippingMethods.Ship, ll[Seattle], ll[LosAngeles]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Seattle], ll[Reno]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Seattle], ll[SaltLakeCity]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Seattle], ll[Billings]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Reno], ll[SaltLakeCity]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Reno], ll[LosAngeles]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[LosAngeles], ll[SaltLakeCity]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[LosAngeles], ll[Tuscon]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[SaltLakeCity], ll[Billings]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[SaltLakeCity], ll[Tuscon]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[SaltLakeCity], ll[Denver]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Tuscon], ll[Denver]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Billings], ll[Denver]),
+                new Route(ShippingMethods.Train, ll[Tuscon], ll[Houston]),
+                new Route(ShippingMethods.Train, ll[Billings], ll[Duluth]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Denver], ll[KansasCity]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Duluth], ll[KansasCity]),
+                new Route(ShippingMethods.Ship, ll[Duluth], ll[Detroit]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Duluth], ll[Indianapolis]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[KansasCity], ll[Indianapolis]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[KansasCity], ll[NewOrleans]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[KansasCity], ll[Houston]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Houston], ll[NewOrleans]),
+                new Route(ShippingMethods.Ship, ll[NewOrleans], ll[Jacksonville]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[NewOrleans], ll[Knoxville]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Jacksonville], ll[Knoxville]),
+                new Route(ShippingMethods.Truck | ShippingMethods.Train, ll[Indianapolis], ll[Knoxville]),
+                new Route(ShippingMethods.Train, ll[Boston], ll[Indianapolis]),
+                new Route(ShippingMethods.Ship, ll[Detroit], ll[Boston]),
+                new Route(ShippingMethods.Ship, ll[Jacksonville], ll[Boston]),
+                new Route(ShippingMethods.Truck, ll[Detroit], ll[Indianapolis]),
             };
+
+            foreach (var route in routes) route.BindLocationRoutes();
 
             var locationDeck = new LocationsDeck(locations, random);
 

@@ -168,7 +168,6 @@
             // kansasCityLocation
             // 
             this.kansasCityLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.kansasCityLocation.HasWarehouse = true;
             this.kansasCityLocation.Location = new System.Drawing.Point(802, 361);
             this.kansasCityLocation.Name = "kansasCityLocation";
             this.kansasCityLocation.Size = new System.Drawing.Size(64, 64);
@@ -179,7 +178,6 @@
             // knoxvilleLocation
             // 
             this.knoxvilleLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.knoxvilleLocation.HasWarehouse = true;
             this.knoxvilleLocation.Location = new System.Drawing.Point(1046, 447);
             this.knoxvilleLocation.Name = "knoxvilleLocation";
             this.knoxvilleLocation.Size = new System.Drawing.Size(64, 64);
@@ -190,7 +188,6 @@
             // indianaoplisLocation
             // 
             this.indianaoplisLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.indianaoplisLocation.HasWarehouse = true;
             this.indianaoplisLocation.Location = new System.Drawing.Point(983, 336);
             this.indianaoplisLocation.Name = "indianaoplisLocation";
             this.indianaoplisLocation.Size = new System.Drawing.Size(64, 64);
@@ -201,7 +198,6 @@
             // detroitLocation
             // 
             this.detroitLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.detroitLocation.HasWarehouse = true;
             this.detroitLocation.Location = new System.Drawing.Point(1065, 255);
             this.detroitLocation.Name = "detroitLocation";
             this.detroitLocation.Size = new System.Drawing.Size(64, 64);
@@ -212,7 +208,6 @@
             // bostonLocation
             // 
             this.bostonLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.bostonLocation.HasWarehouse = true;
             this.bostonLocation.Location = new System.Drawing.Point(1342, 268);
             this.bostonLocation.Name = "bostonLocation";
             this.bostonLocation.Size = new System.Drawing.Size(64, 64);
@@ -223,7 +218,6 @@
             // jacksonvilleLocation
             // 
             this.jacksonvilleLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.jacksonvilleLocation.HasWarehouse = true;
             this.jacksonvilleLocation.Location = new System.Drawing.Point(1100, 595);
             this.jacksonvilleLocation.Name = "jacksonvilleLocation";
             this.jacksonvilleLocation.Size = new System.Drawing.Size(64, 64);
@@ -234,7 +228,6 @@
             // newOrleansLocation
             // 
             this.newOrleansLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.newOrleansLocation.HasWarehouse = true;
             this.newOrleansLocation.Location = new System.Drawing.Point(910, 604);
             this.newOrleansLocation.Name = "newOrleansLocation";
             this.newOrleansLocation.Size = new System.Drawing.Size(64, 64);
@@ -245,7 +238,6 @@
             // duluthLocation
             // 
             this.duluthLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.duluthLocation.HasWarehouse = true;
             this.duluthLocation.Location = new System.Drawing.Point(856, 124);
             this.duluthLocation.Name = "duluthLocation";
             this.duluthLocation.Size = new System.Drawing.Size(64, 64);
@@ -256,7 +248,6 @@
             // houstonLocation
             // 
             this.houstonLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.houstonLocation.HasWarehouse = true;
             this.houstonLocation.Location = new System.Drawing.Point(792, 617);
             this.houstonLocation.Name = "houstonLocation";
             this.houstonLocation.Size = new System.Drawing.Size(64, 64);
@@ -267,7 +258,6 @@
             // denverLocation
             // 
             this.denverLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.denverLocation.HasWarehouse = true;
             this.denverLocation.Location = new System.Drawing.Point(568, 347);
             this.denverLocation.Name = "denverLocation";
             this.denverLocation.Size = new System.Drawing.Size(64, 64);
@@ -278,7 +268,6 @@
             // renoLocation
             // 
             this.renoLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.renoLocation.HasWarehouse = true;
             this.renoLocation.Location = new System.Drawing.Point(234, 316);
             this.renoLocation.Name = "renoLocation";
             this.renoLocation.Size = new System.Drawing.Size(64, 64);
@@ -289,7 +278,6 @@
             // saltLakeCityLocation
             // 
             this.saltLakeCityLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.saltLakeCityLocation.HasWarehouse = true;
             this.saltLakeCityLocation.Location = new System.Drawing.Point(399, 303);
             this.saltLakeCityLocation.Name = "saltLakeCityLocation";
             this.saltLakeCityLocation.Size = new System.Drawing.Size(64, 64);
@@ -300,7 +288,6 @@
             // billingsLocation
             // 
             this.billingsLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.billingsLocation.HasWarehouse = true;
             this.billingsLocation.Location = new System.Drawing.Point(470, 138);
             this.billingsLocation.Name = "billingsLocation";
             this.billingsLocation.Size = new System.Drawing.Size(64, 64);
@@ -311,7 +298,6 @@
             // seattleLocation
             // 
             this.seattleLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.seattleLocation.HasWarehouse = true;
             this.seattleLocation.Location = new System.Drawing.Point(163, 84);
             this.seattleLocation.Name = "seattleLocation";
             this.seattleLocation.Size = new System.Drawing.Size(64, 64);
@@ -322,7 +308,6 @@
             // lostAngelesLocation
             // 
             this.lostAngelesLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.lostAngelesLocation.HasWarehouse = true;
             this.lostAngelesLocation.Location = new System.Drawing.Point(251, 509);
             this.lostAngelesLocation.Name = "lostAngelesLocation";
             this.lostAngelesLocation.Size = new System.Drawing.Size(64, 64);
@@ -333,7 +318,6 @@
             // tusconLocation
             // 
             this.tusconLocation.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.tusconLocation.HasWarehouse = true;
             this.tusconLocation.Location = new System.Drawing.Point(413, 548);
             this.tusconLocation.Name = "tusconLocation";
             this.tusconLocation.Size = new System.Drawing.Size(64, 64);
