@@ -1,11 +1,16 @@
-﻿namespace LD42
+﻿using System;
+
+namespace LD42
 {
-    class Gameplay
+    class MiningLogisticsGame
     {
-        private Gameplay()
+        private GameBoardMap gameBoardMap;
+
+        public MiningLogisticsGame()
         {
+            gameBoardMap = GameBoardMap.Create(new Random());
         }
 
-        public Gameplay
+        public static bool GameOver { get; private set; }
     }
 }
