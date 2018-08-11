@@ -19,9 +19,8 @@ namespace LD42
     abstract class Resource
     {
         public class Copper : Resource { }
-        public class Lithium : Resource { }
+        public class Zinc : Resource { }
         public class Silver : Resource { }
-        public class Gold : Resource { }
         public class Iron : Resource { }
     }
 
@@ -49,37 +48,38 @@ namespace LD42
         public ILocationOccupant Occupant { get; private set; }
     }
 
-    static class Locations
-    {
-        public static Location Hibbing(Mine<Resource.Iron> ironMine) => new Location($"{nameof(Hibbing)}", ironMine);
-        public static Location KansasCity() => new Location($"{nameof(KansasCity)}", new EmptyLocation());
-        public static Location Chicago() => new Location($"{nameof(Chicago)}", new EmptyLocation());
-    }
-
     class ResourceTransport
     {
         public IEnumerable<Resource> ResourceUnitsInTransit { get; private set; }
     }
 
-    class RouteSegment : IGameBoardMapElement
+    enum RouteType
     {
-        private List<ResourceTransport> transports = new List<ResourceTransport>();
-
-        public RouteSegment(IGameBoardMapElement nextToLocation1, IGameBoardMapElement nextToLocation2)
-        {
-            NextToLocation1 = nextToLocation1;
-            NextToLocation2 = nextToLocation2;
-        }
-
-        public IGameBoardMapElement NextToLocation1 { get; }
-        public IGameBoardMapElement NextToLocation2 { get; }
-        public IEnumerable<ResourceTransport> Transports => transports;
+        Ship,
+        Train,
+        Truck,
+        TruckOrTrain,
     }
 
     class Route
     {
+
+        private List<ResourceTransport> _truckTransports = new List<ResourceTransport>();
+        private List<ResourceTransport> _trainTransports = new List<ResourceTransport>();
+
+        public Route(RouteType routeType, Location l1, Location l2)
+        {
+            RouteType = routeType;
+            Location1 = l1;
+            Location2 = l2;
+        }
+
+        private RouteType RouteType { get; }
         public Location Location1 { get; }
         public Location Location2 { get; }
+        
+        public IEnumerable<ResourceTransport> TruckTransports => _truckTransports;
+        public IEnumerable<ResourceTransport> TrainTransports => _trainTransports;
     }
 
     class Warehouse : ILocationOccupant
@@ -177,20 +177,13 @@ namespace LD42
         }
     }
 
-    static class Mines
-    {
-        public static Mine<Resource.Iron> NorthStarMine(Random random, ThirdParties thirdParties) => 
-            new Mine<Resource.Iron>("North Star Mine", random, thirdParties);
-    }
-
     class SaleCard
     {
         public string DeliverToLocation { get; }
         public int WeeksToFulfill { get; }
         public int UnitsOfCopper { get; }
-        public int UnitsOfLithium { get; }
+        public int UnitsOfZinc { get; }
         public int UnitsOfSilver { get; }
-        public int UnitsOfGold { get; }
         public int UnitsOfIron { get; }
     }
 
@@ -206,6 +199,23 @@ namespace LD42
 
     class GameBoardMap
     {
+        const string Reno = "Reno";
+        const string Knoxville = "Knoxville";
+        const string Tuscon = "Tuscon";
+        const string Duluth = "Duluth";
+        const string Denver = "Denver";
+        const string LosAngeles = "Los Angeles";
+        const string Detroit = "Detroit";
+        const string Houston = "Houston";
+        const string Seattle = "Seattle";
+        const string Jacksonville = "Jacksonville";
+        const string Boston = "Boston";
+        const string Indianapolis = "Indianapolis";
+        const string NewOrleans = "New Orleans";
+        const string SaltLakeCity = "Salt Lake City";
+        const string Billings = "Billings";
+        const string KansasCity = "Kansas City";
+
         private GameBoardMap(IEnumerable<IGameBoardMapElement> mapElements)
         {
             MapElements = mapElements;
@@ -215,7 +225,81 @@ namespace LD42
 
         public static GameBoardMap Create(Random random)
         {
-            throw new NotImplementedException();
+            var tp = new ThirdParties();
+
+            var duluthMine = new Mine<Resource.Iron>("North Star Iron Mine", random, tp);
+            var knoxvillMine = new Mine<Resource.Zinc>("Smokey Appalachian Zinc Mine", random, tp);
+            var tusconMine = new Mine<Resource.Copper>("Great Canyon State Copper Mine", random, tp);
+            var renoMine = new Mine<Resource.Silver>("Five Card Silver Mine", random, tp);
+
+            var mines = new Mine[]
+            {
+                duluthMine,
+                knoxvillMine,
+                tusconMine,
+                renoMine,
+            };
+
+            var locations = new Location[]
+            {
+                new Location(Reno, renoMine),
+                new Location(Knoxville, knoxvillMine),
+                new Location(Tuscon, tusconMine),
+                new Location(Duluth, duluthMine),
+                new Location(Denver, new EmptyLocation()),
+                new Location(LosAngeles, new EmptyLocation()),
+                new Location(Detroit, new EmptyLocation()),
+                new Location(Houston, new EmptyLocation()),
+                new Location(Seattle, new EmptyLocation()),
+                new Location(Jacksonville, new EmptyLocation()),
+                new Location(Boston, new EmptyLocation()),
+                new Location(Indianapolis, new EmptyLocation()),
+                new Location(NewOrleans, new EmptyLocation()),
+                new Location(SaltLakeCity, new EmptyLocation()),
+                new Location(Billings, new EmptyLocation()),
+                new Location(KansasCity, new EmptyLocation()),
+            };
+
+            var ll = locations.ToDictionary((l) => l.Name);
+
+            var route = new Route[]
+            {
+                new Route(RouteType.Ship, ll[Seattle], ll[LosAngeles]),
+                new Route(RouteType.TruckOrTrain, ll[Seattle], ll[Reno]),
+                new Route(RouteType.TruckOrTrain, ll[Seattle], ll[SaltLakeCity]),
+                new Route(RouteType.TruckOrTrain, ll[Seattle], ll[Billings]),
+                new Route(RouteType.TruckOrTrain, ll[Reno], ll[SaltLakeCity]),
+                new Route(RouteType.TruckOrTrain, ll[Reno], ll[LosAngeles]),
+                new Route(RouteType.TruckOrTrain, ll[LosAngeles], ll[SaltLakeCity]),
+                new Route(RouteType.TruckOrTrain, ll[LosAngeles], ll[Tuscon]),
+                new Route(RouteType.TruckOrTrain, ll[SaltLakeCity], ll[Billings]),
+                new Route(RouteType.TruckOrTrain, ll[SaltLakeCity], ll[Tuscon]),
+                new Route(RouteType.TruckOrTrain, ll[SaltLakeCity], ll[Denver]),
+                new Route(RouteType.TruckOrTrain, ll[Tuscon], ll[Denver]),
+                new Route(RouteType.TruckOrTrain, ll[Billings], ll[Denver]),
+                new Route(RouteType.Train, ll[Tuscon], ll[Houston]),
+                new Route(RouteType.Train, ll[Billings], ll[Duluth]),
+                new Route(RouteType.TruckOrTrain, ll[Denver], ll[KansasCity]),
+                new Route(RouteType.TruckOrTrain, ll[Duluth], ll[KansasCity]),
+                new Route(RouteType.Ship, ll[Duluth], ll[Detroit]),
+                new Route(RouteType.TruckOrTrain, ll[Duluth], ll[Indianapolis]),
+                new Route(RouteType.TruckOrTrain, ll[KansasCity], ll[Indianapolis]),
+                new Route(RouteType.TruckOrTrain, ll[KansasCity], ll[NewOrleans]),
+                new Route(RouteType.TruckOrTrain, ll[KansasCity], ll[Houston]),
+                new Route(RouteType.TruckOrTrain, ll[Houston], ll[NewOrleans]),
+                new Route(RouteType.Ship, ll[NewOrleans], ll[Jacksonville]),
+                new Route(RouteType.TruckOrTrain, ll[NewOrleans], ll[Knoxville]),
+                new Route(RouteType.TruckOrTrain, ll[Jacksonville], ll[Knoxville]),
+                new Route(RouteType.TruckOrTrain, ll[Indianapolis], ll[Knoxville]),
+                new Route(RouteType.Train, ll[Boston], ll[Indianapolis]),
+                new Route(RouteType.Ship, ll[Detroit], ll[Boston]),
+                new Route(RouteType.Ship, ll[Jacksonville], ll[Boston]),
+                new Route(RouteType.Truck, ll[Detroit], ll[Indianapolis]),
+            };
+
+
+
+            return new GameBoardMap();
         }
     }
 }
