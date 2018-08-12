@@ -31,6 +31,11 @@ namespace LD42.MiningLogisticsGame.Gameplay
                 .AddComponent(new ShowWarehousesBehavior(game.GameBoard, this))
                 .AddToState(this);
 
+            Entity
+                .Empty
+                .AddComponent(new ShowPurchaseOrdersBehavior(game.GameBoard, this))
+                .AddToState(this);
+
             foreach (var corp in game.GameBoard.Corporations)
             {
                 Entity.Empty

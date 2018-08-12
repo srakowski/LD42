@@ -502,6 +502,8 @@ namespace LD42
         public bool HasBeenFulfilled =>
             AllResourcesFilled && _creditGiven;
 
+        public bool Established { get; set; } = false;
+
         private bool AllResourcesFilled =>
             Sale.RequestedIron == _resources.OfType<Resource.Iron>().Count() &&
             Sale.RequestedSilver == _resources.OfType<Resource.Silver>().Count() &&

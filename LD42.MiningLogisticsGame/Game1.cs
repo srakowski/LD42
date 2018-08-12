@@ -56,6 +56,9 @@ namespace LD42.MiningLogisticsGame
             Load<Texture2D>("adicocard");
             Load<Texture2D>("coppercard");
             Load<Texture2D>("copperpip");
+            Load<Texture2D>("cbtrue");
+            Load<Texture2D>("cbfalse");
+            Load<Texture2D>("uparrow");
             Load<SpriteFont>("large");
             Load<SpriteFont>("message");
         }

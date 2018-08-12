@@ -213,6 +213,7 @@ namespace LD42
             _options = new List<PurchaseOrder>(purchaseOrders);
             _selected = new List<PurchaseOrder>();
         }
+        public string Message => "Pick 3 purchase orders to start the game with.";
         public int SelectCount { get; }
         public IEnumerable<PurchaseOrder> PurchaseOrderOptions => _options;
         public IEnumerable<PurchaseOrder> SelectedPurchaseOrders => _selected;
