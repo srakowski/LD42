@@ -112,6 +112,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="app.manifest" />
+    <None Include="Content\Message.spritefont" />
+    <None Include="Content\Large.spritefont" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LD42\LD42.csproj">

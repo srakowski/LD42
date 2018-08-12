@@ -77,9 +77,15 @@ namespace LD42
         public class Iron : Resource { }
     }
 
-    public interface ILocationOccupant { }
+    public interface ILocationOccupant
+    {
+        Location Location { get; set; }
+    }
 
-    public class EmptyLocation : ILocationOccupant { }
+    public class EmptyLocation : ILocationOccupant
+    {
+        public Location Location { get; set; }
+    }
 
     public class Location
     {
@@ -89,6 +95,7 @@ namespace LD42
         {
             Name = name;
             Occupant = occupant;
+            occupant.Location = this;
         }
         public string Name { get; }
         public ILocationOccupant Occupant { get; private set; }
@@ -100,6 +107,7 @@ namespace LD42
         {
             if (!(this.Occupant is EmptyLocation)) throw new Exception("can't place over existing occupant");
             Occupant = occupant;
+            Occupant.Location = this;
         }
 
         internal void AddRoute(Route route) =>
@@ -240,6 +248,8 @@ namespace LD42
 
     public class Warehouse : ILocationOccupant
     {
+        public bool Established { get; set; }
+        public Location Location { get; set; }
         private List<Resource> unitsOfResources = new List<Resource>();
         public int ResourceCapacityInUnits { get; } = GameConfiguration.WarehouseCapacityInResourceUnits;
         public int TotalUnits => unitsOfResources.Count;
@@ -293,6 +303,12 @@ namespace LD42
 
     abstract public class Mine : ILocationOccupant
     {
+        public Location Location
+        {
+            get => Storage.Location;
+            set => Storage.Location = value;
+        }
+
         protected Mine(Random random) => Deck = new MineOutputsDeck(this, random);
         public MineOutputsDeck Deck { get; }
         public abstract Warehouse Storage { get; }
@@ -669,7 +685,7 @@ namespace LD42
 
             var corporations = new[]
             {
-                new Corporation("LuDare Enterprises"),
+                new Corporation("LuDare"),
                 new Corporation("SparkTech Industries"),
                 new Corporation("Adico"),
             };

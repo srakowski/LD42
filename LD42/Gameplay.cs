@@ -23,19 +23,22 @@ namespace LD42
             var gameBoardMap = GameBoard.Create(random);
 
             GameBoard = gameBoardMap;
-            yield return gameBoardMap;
+
+            yield return null;
+            yield return new PhaseIndicator("Setup phase.");
 
             // draw cards from location deck until you have one that is not occupied by a mine
             LocationCard initialWarehouseCard;
             do
             {
                 initialWarehouseCard = gameBoardMap.LocationsDeck.DrawOne();
-                if (!(initialWarehouseCard.Location.Occupant is EmptyLocation))
-                    yield return new ShowRejectedCard(initialWarehouseCard);
 
             } while (!(initialWarehouseCard.Location.Occupant is EmptyLocation));
 
-            yield return new ShowAcceptedCard(initialWarehouseCard);
+            yield return new CardsMessage(
+                "You pulled this card from the locations deck. A storage yard will be added here.",
+                new ICard[] { initialWarehouseCard }
+            );
 
             // once you get a location place the warehouse & reset the location deck
             var warehouse = new Warehouse();
@@ -48,37 +51,52 @@ namespace LD42
                 .OrderBy(_ => random.Next())
                 .ToArray());
 
+            yield return new CardsMessage(
+                "These cards were pulled and will be added to respective Mines.",
+                cardQueue.Cast<ICard>().Take(GameConfiguration.InitialResourcesToMines).ToArray()
+            );
+
             // the first y cards drawn, add resources to the respective mines
             for (int y = 0; y < GameConfiguration.InitialResourcesToMines; y++)
             {
                 var nextCard = cardQueue.Dequeue();
-                yield return new ShowAcceptedCard(nextCard);
                 nextCard.Mine.ProduceFromCard(nextCard);
             }
+
+            yield return new CardsMessage(
+                "These cards were pulled and will be added to your storage yard.",
+                cardQueue.Cast<ICard>()
+            );
 
             // generate resources for the remaining z cards and put them in the warehouse
             for (int z = 0; z < GameConfiguration.InitialResourcesToWarehouse; z++)
             {
                 var nextCard = cardQueue.Dequeue();
-                yield return new ShowAcceptedCard(nextCard);
                 var resources = nextCard.Mine.GenerateResourcesForCard(nextCard);
                 warehouse.ReceiveResources(resources, gameBoardMap.SellOffPile);
             }
 
             while (!GameIsWon && !GameIsLost)
             {
-                // resolve transports
-                foreach (var transport in gameBoardMap.Routes.SelectMany(r => r.Transports).Where(t => t.IsAtDestination))
+                var resolveTransports = gameBoardMap.Routes.SelectMany(r => r.Transports).Where(t => t.IsAtDestination);
+                if (resolveTransports.Any())
                 {
-                    transport.Route.RemoveTransport(transport);
-                    var trar = new TransitResolutionActionRequest(transport);
-                    yield return trar;
-                    trar.Action.Execute(gameBoardMap);
+                    yield return new PhaseIndicator("Transport resolution phase.");
+                    // resolve transports
+                    foreach (var transport in resolveTransports)
+                    {
+                        transport.Route.RemoveTransport(transport);
+                        var trar = new TransitResolutionActionRequest(transport);
+                        yield return trar;
+                        trar.Action.Execute(gameBoardMap);
+                    }
                 }
 
                 // select purchase orders if needed
                 if (gameBoardMap.PurchaseOrderSlots.Any(s => s == null))
                 {
+                    yield return new PhaseIndicator("Purchase order selection phase.");
+
                     // draw 5 corporation cards and place them in a row
                     // foreach corporation card draw a sale card and place it next to the corporation
                     // foreach corporation card fraw a location card and place it next to the sale card
@@ -105,6 +123,8 @@ namespace LD42
                             gameBoardMap.PurchaseOrderSlots[i] = poQueue.Dequeue();
                 }
 
+                yield return new PhaseIndicator("Actions phase.");
+
                 // run 5 actions
                 for (int round = 0; round < GameConfiguration.ActionPointsPerRound; round++)
                 {
@@ -121,6 +141,7 @@ namespace LD42
                 }
 
                 // board actions
+                yield return new PhaseIndicator("Process board phase.");
 
                 // close out any fulfilled purchase orders
                 for (var i = 0; i < gameBoardMap.PurchaseOrderSlots.Length; i++)
@@ -142,6 +163,26 @@ namespace LD42
     }
 
     public abstract class PlayerInteraction { }
+
+    public class CardsMessage
+    {
+        public CardsMessage(string message,  IEnumerable<ICard> cards)
+        {
+            Message = message;
+            Cards = cards;
+        }
+        public string Message { get; }
+        public IEnumerable<ICard> Cards { get; }
+    }
+
+    public class PhaseIndicator
+    {
+        public PhaseIndicator(string message)
+        {
+            Message = message;
+        }
+        public string Message { get; }
+    }
 
     public class ShowCard
     {

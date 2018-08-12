@@ -25,11 +25,6 @@
 /processorParam:TextureFormat=Color
 /build:board.png
 
-#begin Content.mgcb
-/importer:
-/processor:
-/build:Content.mgcb
-
 #begin coppercard.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -269,4 +264,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:adicocard.png
+
+#begin Large.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:Large.spritefont
+
+#begin Message.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:Message.spritefont
 
