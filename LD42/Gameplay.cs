@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace LD42
 {
-    public class MiningLogisticsGame
+    public class MiningLogisticsGameplay
     {
         public GameBoard GameBoard { get; private set; }
 

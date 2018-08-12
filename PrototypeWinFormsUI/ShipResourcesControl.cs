@@ -13,8 +13,6 @@ namespace PrototypeWinFormsUI
 {
     public partial class ShipResourcesControl : UserControl
     {
-        private Warehouse warehouse;
-
         public ShipResourcesControl(Warehouse warehouse)
         {
             InitializeComponent();

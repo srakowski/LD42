@@ -13,7 +13,7 @@ namespace PrototypeWinFormsUI
         private LocationControl[] locationControls;
         private PurchaseOrderControl[] purchaseOrderControls;
 
-        private MiningLogisticsGame game;
+        private MiningLogisticsGameplay game;
         private IEnumerator play;
 
         private PlayerActionRequest playerActionRequest;
@@ -65,7 +65,7 @@ namespace PrototypeWinFormsUI
                 purchaseOrder3,
             };
 
-            game = new MiningLogisticsGame();
+            game = new MiningLogisticsGameplay();
             play = game.Play().GetEnumerator();
             
         }
@@ -80,7 +80,7 @@ namespace PrototypeWinFormsUI
             var mineLocations = game.GameBoard.Locations.Where(l => !(l.Occupant is EmptyLocation));
             foreach (var loc in mineLocations)
             {
-                var control = locationControls.Where(l => l.Tag == loc.Name).FirstOrDefault();
+                var control = locationControls.Where(l => (string)l.Tag == loc.Name).FirstOrDefault();
                 var wh = loc.Occupant is Mine m ? m.Storage :
                     loc.Occupant is Warehouse w ? w :
                     null;

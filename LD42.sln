@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LD42", "LD42\LD42.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrototypeWinFormsUI", "PrototypeWinFormsUI\PrototypeWinFormsUI.csproj", "{E1360838-799E-411B-869F-6086EAB391FD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LD42.MiningLogisticsGame", "LD42.MiningLogisticsGame\LD42.MiningLogisticsGame.csproj", "{B20BFE84-132A-4DB2-8061-43D52518F700}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{E1360838-799E-411B-869F-6086EAB391FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1360838-799E-411B-869F-6086EAB391FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1360838-799E-411B-869F-6086EAB391FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B20BFE84-132A-4DB2-8061-43D52518F700}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B20BFE84-132A-4DB2-8061-43D52518F700}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B20BFE84-132A-4DB2-8061-43D52518F700}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B20BFE84-132A-4DB2-8061-43D52518F700}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
