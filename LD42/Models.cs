@@ -33,6 +33,9 @@ namespace LD42
         public const int FreighterShipMaxResources = 12;
 
         public const int InitialCorporationFavor = 5;
+        public const int CorporationFavorToLandContract = 10;
+        public const int MaxSellOffPile = 16;
+        public const int MaxCumulativeMineShutdowns = 0;
     }
 
     public interface ICard
@@ -137,26 +140,34 @@ namespace LD42
     public abstract class ResourceTransport
     {
         protected ResourceTransport(
+            Route route,
             Location to, Location from, 
             IEnumerable<Resource> resourceUnits,
             int roundsToComplete)
         {
+            Route = route;
             ToLocation = to;
             FromLocation = from;
             ResourceUnits = resourceUnits;
-            RoundsToComplete = roundsToComplete;
-            RoundsCompleted = 1;
+            RoundsToArrive = roundsToComplete;
+            RoundsCompleted = 0;
         }
+        public Route Route { get; }
         public Location ToLocation { get; }
         public Location FromLocation { get; }
         public IEnumerable<Resource> ResourceUnits { get; }
-        public int RoundsToComplete { get; }
+        public int RoundsToArrive { get; }
         public int RoundsCompleted { get; private set; }
+        public bool IsAtDestination => RoundsCompleted >= RoundsToArrive;
+        internal void ProcessRound()
+        {
+            RoundsCompleted++;
+        }
     }
 
     public class Truck : ResourceTransport
     {
-        public Truck(Location to, Location from, IEnumerable<Resource> resourceUnits) : base(to, from, resourceUnits, 1)
+        public Truck(Route route, Location to, Location from, IEnumerable<Resource> resourceUnits) : base(route, to, from, resourceUnits, 1)
         {
             if (this.ResourceUnits.Count() > GameConfiguration.FreighterShipMaxResources)
                 throw new Exception("this is carr ying too much");
@@ -165,7 +176,7 @@ namespace LD42
 
     public class Train : ResourceTransport
     {
-        public Train(Location to, Location from, IEnumerable<Resource> resourceUnits) : base(to, from, resourceUnits, 2)
+        public Train(Route route, Location to, Location from, IEnumerable<Resource> resourceUnits) : base(route, to, from, resourceUnits, 2)
         {
             if (this.ResourceUnits.Count() > GameConfiguration.TrainMaxResources)
                 throw new Exception("this is carr ying too much");
@@ -174,7 +185,7 @@ namespace LD42
 
     public class FreighterShip : ResourceTransport
     {
-        public FreighterShip(Location to, Location from, IEnumerable<Resource> resourceUnits) : base(to, from, resourceUnits, 3)
+        public FreighterShip(Route route, Location to, Location from, IEnumerable<Resource> resourceUnits) : base(route, to, from, resourceUnits, 3)
         {
             if (this.ResourceUnits.Count() > GameConfiguration.TruckMaxResources)
                 throw new Exception("this is carr ying too much");
@@ -220,6 +231,11 @@ namespace LD42
         {
             _transports.Add(transport);
         }
+
+        internal void RemoveTransport(ResourceTransport transport)
+        {
+            _transports.Remove(transport);
+        }
     }
 
     public class Warehouse : ILocationOccupant
@@ -228,12 +244,17 @@ namespace LD42
         public int ResourceCapacityInUnits { get; } = GameConfiguration.WarehouseCapacityInResourceUnits;
         public int TotalUnits => unitsOfResources.Count;
         public IEnumerable<Resource> UnitsOfResources => unitsOfResources;
-
-        public void ReceiveResources(IEnumerable<Resource> resources)
+        public bool IsFull => TotalUnits >= ResourceCapacityInUnits;
+        public void ReceiveResources(IEnumerable<Resource> resources, SellOffPile sellOffPile)
         {
             var resourceQueue = new Queue<Resource>(resources);
-            while (resourceQueue.Any() && TotalUnits < ResourceCapacityInUnits)
+            while (resourceQueue.Any() && !IsFull)
                 unitsOfResources.Add(resourceQueue.Dequeue());
+            if (sellOffPile != null)
+            {
+                while (resourceQueue.Any())
+                    sellOffPile.AddToPile(resourceQueue.Dequeue());
+            }
         }
     }
 
@@ -276,14 +297,17 @@ namespace LD42
         public MineOutputsDeck Deck { get; }
         public abstract Warehouse Storage { get; }
         public abstract string ResourceTypeDescription { get; }
+        public abstract bool ShutdownTooManyTimes { get; }
 
-        public abstract void Produce();
+        public abstract void ProcessRound();
         public abstract void ProduceFromCard(MineOutputCard card);
         public abstract IEnumerable<Resource> GenerateResourcesForCard(MineOutputCard card);
     }
 
     public class Mine<T> : Mine where T : Resource, new()
     {
+        public int _daysShutDown = 0;
+
         public Mine(string name, Random random)
             : base(random)
         {
@@ -297,11 +321,23 @@ namespace LD42
 
         public override string ResourceTypeDescription => typeof(T).Name;
 
-        public override void Produce() =>
-            ProduceFromCard(Deck.DrawOne());
+        public int DaysShutDown => _daysShutDown;
+        public override bool ShutdownTooManyTimes => _daysShutDown >= GameConfiguration.MaxCumulativeMineShutdowns;
+
+        public override void ProcessRound()
+        {
+            if (Storage.IsFull)
+            {
+                _daysShutDown++;
+            }
+            else
+            {
+                ProduceFromCard(Deck.DrawOne());
+            }
+        }
 
         public override void ProduceFromCard(MineOutputCard card) =>
-            Storage.ReceiveResources(GenerateResourcesForCard(card));
+            Storage.ReceiveResources(GenerateResourcesForCard(card), null);
 
         public override IEnumerable<Resource> GenerateResourcesForCard(MineOutputCard card) =>
             Enumerable.Range(0, card.ResourceUnitsMined)
@@ -375,6 +411,10 @@ namespace LD42
         public string Name { get; }
         public int Favor => _favor;
 
+        public bool IsUnderContract => _favor >= GameConfiguration.CorporationFavorToLandContract;
+
+        public bool WillNoLongerDoBusinessWithYou => _favor == 0;
+
         public void GainFavor()
         {
             _favor++;
@@ -425,7 +465,8 @@ namespace LD42
     {
         private List<Resource> _resources = new List<Resource>();
         private int _roundsSinceStart = 0;
-        
+        private bool _creditGiven = false;
+
         public PurchaseOrder(
             CorporationCard corporationCard,
             SaleCard saleCard,
@@ -443,6 +484,9 @@ namespace LD42
         public int DueInRounds => Sale.RoundsRequestedIn - _roundsSinceStart;
 
         public bool HasBeenFulfilled =>
+            AllResourcesFilled && _creditGiven;
+
+        private bool AllResourcesFilled =>
             Sale.RequestedIron == _resources.OfType<Resource.Iron>().Count() &&
             Sale.RequestedSilver == _resources.OfType<Resource.Silver>().Count() &&
             Sale.RequestedCopper == _resources.OfType<Resource.Copper>().Count() &&
@@ -451,9 +495,17 @@ namespace LD42
         public void ProcessRound()
         {
             if (HasBeenFulfilled) return;
-            _roundsSinceStart++;
+            if (AllResourcesFilled && DueInRounds >= 0)
+            {
+                Corporation.Corporation.GainFavor();
+                _creditGiven = true;
+                return;
+            }
             if (DueInRounds < 0)
+            {
                 Corporation.Corporation.LoseFavor();
+            }
+            _roundsSinceStart++;
         }
 
         public void Progress(IEnumerable<Resource> resourceDeposit, SellOffPile sellOffPile)
@@ -475,7 +527,7 @@ namespace LD42
                 {
                     _resources.Remove(ex);
                     sellOffPile.AddToPile(ex);
-                }                    
+                }
             }
         }
     }
@@ -484,8 +536,10 @@ namespace LD42
     {
         private List<Resource> resourceUnits = new List<Resource>();
         public IEnumerable<Resource> ResourceUnits => resourceUnits;
-        internal void AddToPile<T>(T ex) where T : Resource =>
-            resourceUnits.Add(ex);
+
+        public bool IsFull => ResourceUnits.Count() >= GameConfiguration.MaxSellOffPile;
+
+        internal void AddToPile(Resource ex) => resourceUnits.Add(ex);
     }
 
     public class GameBoard
@@ -519,6 +573,7 @@ namespace LD42
             Mines = mines;
             Locations = locations;
             LocationsDeck = locationDeck;
+            Corporations = corporations;
             CorporationsDeck = corporationsDeck;
             SalesDeck = salesDeck;
             Routes = routes;
@@ -528,6 +583,7 @@ namespace LD42
         public IEnumerable<Mine> Mines { get; }
         public IEnumerable<Location> Locations { get; }
         public LocationsDeck LocationsDeck { get; }
+        public IEnumerable<Corporation> Corporations { get; }
         public CorporationsDeck CorporationsDeck { get; }
         public SalesDeck SalesDeck { get; }
         public IEnumerable<Route> Routes { get; }

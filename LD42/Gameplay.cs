@@ -9,8 +9,13 @@ namespace LD42
     {
         public GameBoard GameBoard { get; private set; }
 
-        public bool GameIsWon { get; private set; }
-        public bool GameIsLost { get; private set; }
+        public bool GameIsWon =>
+            GameBoard.Corporations.All(c => c.IsUnderContract);
+
+        public bool GameIsLost =>
+            GameBoard.SellOffPile.IsFull ||
+            GameBoard.Corporations.Any(c => c.WillNoLongerDoBusinessWithYou) ||
+            GameBoard.Mines.Any(m => m.ShutdownTooManyTimes);
 
         public IEnumerable Play()
         {
@@ -57,26 +62,36 @@ namespace LD42
                 var nextCard = cardQueue.Dequeue();
                 yield return new ShowAcceptedCard(nextCard);
                 var resources = nextCard.Mine.GenerateResourcesForCard(nextCard);
-                warehouse.ReceiveResources(resources);
+                warehouse.ReceiveResources(resources, gameBoardMap.SellOffPile);
             }
 
             while (!GameIsWon && !GameIsLost)
             {
-                // draw 5 corporation cards and place them in a row
-                // foreach corporation card draw a sale card and place it next to the corporation
-                // foreach corporation card fraw a location card and place it next to the sale card
-                // these are 5 prospective sales, you must select up to 3 to fill active PO slots
-                var poOptions = Enumerable
-                    .Range(0, GameConfiguration.PurchaseOrderOptionCount)
-                    .Select(_ => new PurchaseOrder(
-                        gameBoardMap.CorporationsDeck.DrawOne(),
-                        gameBoardMap.SalesDeck.DrawOne(),
-                        gameBoardMap.LocationsDeck.DrawOne()
-                    ))
-                    .ToArray();
-
-                if (poOptions.Any())
+                // resolve transports
+                foreach (var transport in gameBoardMap.Routes.SelectMany(r => r.Transports).Where(t => t.IsAtDestination))
                 {
+                    transport.Route.RemoveTransport(transport);
+                    var trar = new TransitResolutionActionRequest(transport);
+                    yield return trar;
+                    trar.Action.Execute(gameBoardMap);
+                }
+
+                // select purchase orders if needed
+                if (gameBoardMap.PurchaseOrderSlots.Any(s => s == null))
+                {
+                    // draw 5 corporation cards and place them in a row
+                    // foreach corporation card draw a sale card and place it next to the corporation
+                    // foreach corporation card fraw a location card and place it next to the sale card
+                    // these are 5 prospective sales, you must select up to 3 to fill active PO slots
+                    var poOptions = Enumerable
+                        .Range(0, GameConfiguration.PurchaseOrderOptionCount)
+                        .Select(_ => new PurchaseOrder(
+                            gameBoardMap.CorporationsDeck.DrawOne(),
+                            gameBoardMap.SalesDeck.DrawOne(),
+                            gameBoardMap.LocationsDeck.DrawOne()
+                        ))
+                        .ToArray();
+
                     var picks = new PickPurchaseOrders(poOptions, gameBoardMap.PurchaseOrderSlots.Count(s => s == null));
                     yield return picks;
 
@@ -90,6 +105,7 @@ namespace LD42
                             gameBoardMap.PurchaseOrderSlots[i] = poQueue.Dequeue();
                 }
 
+                // run 5 actions
                 for (int round = 0; round < GameConfiguration.ActionPointsPerRound; round++)
                 {
                     var playerActionRequest = new PlayerActionRequest($"Round {round + 1}: initiate resource moves", round == 0);
@@ -103,6 +119,24 @@ namespace LD42
 
                     if (action is BuildWarehouse) break;
                 }
+
+                // board actions
+
+                // close out any fulfilled purchase orders
+                for (var i = 0; i < gameBoardMap.PurchaseOrderSlots.Length; i++)
+                {
+                    gameBoardMap.PurchaseOrderSlots[i].ProcessRound();
+                    if (gameBoardMap.PurchaseOrderSlots[i].HasBeenFulfilled)
+                        gameBoardMap.PurchaseOrderSlots[i] = null;
+                }
+
+                // produce mine resources
+                foreach (var mine in gameBoardMap.Mines)
+                    mine.ProcessRound();
+
+                // increment transports
+                foreach (var transport in gameBoardMap.Routes.SelectMany(r => r.Transports))
+                    transport.ProcessRound();
             }
         }
     }
@@ -184,9 +218,9 @@ namespace LD42
                 throw new Exception("Route does not have selected shipping method");
 
             var transport =
-                Method == ShippingMethods.Ship ? new FreighterShip(ToLocation, FromLocation, ResourceUnits) :
-                Method == ShippingMethods.Train ? new Train(ToLocation, FromLocation, ResourceUnits) :
-                Method == ShippingMethods.Truck ? (ResourceTransport)new Truck(ToLocation, FromLocation, ResourceUnits) :
+                Method == ShippingMethods.Ship ? new FreighterShip(Route, ToLocation, FromLocation, ResourceUnits) :
+                Method == ShippingMethods.Train ? new Train(Route, ToLocation, FromLocation, ResourceUnits) :
+                Method == ShippingMethods.Truck ? (ResourceTransport)new Truck(Route, ToLocation, FromLocation, ResourceUnits) :
                 throw new Exception("invalid shipping method");
 
             Route.AddTransport(transport);
@@ -225,7 +259,83 @@ namespace LD42
         }
     }
 
+    public abstract class TransitResolutionAction
+    {
+        public abstract void Execute(GameBoard gameBoard);
+    }
+
     public class TransitResolutionActionRequest
     {
+        public TransitResolutionActionRequest(ResourceTransport transport)
+        {
+            Transport = transport;
+        }
+        public ResourceTransport Transport { get; }
+        public TransitResolutionAction Action { get; set; }
+    }
+
+    public class ForwardTransitResolutionAction : TransitResolutionAction
+    {
+        public ForwardTransitResolutionAction(Route route, IEnumerable<Resource> resourceUnits, Location from, Location to, ShippingMethods method)
+        {
+            Route = route;
+            ResourceUnits = resourceUnits;
+            FromLocation = from;
+            ToLocation = to;
+            Method = method;
+        }
+
+        public Route Route { get; }
+        public IEnumerable<Resource> ResourceUnits { get; }
+        public Location FromLocation { get; }
+        public Location ToLocation { get; }
+        public ShippingMethods Method { get; }
+
+        public override void Execute(GameBoard gameBoard)
+        {
+            if (!Route.EligibleShippingMethods.HasFlag(Method))
+                throw new Exception("Route does not have selected shipping method");
+
+            var transport =
+                Method == ShippingMethods.Ship ? new FreighterShip(Route, ToLocation, FromLocation, ResourceUnits) :
+                Method == ShippingMethods.Train ? new Train(Route, ToLocation, FromLocation, ResourceUnits) :
+                Method == ShippingMethods.Truck ? (ResourceTransport)new Truck(Route, ToLocation, FromLocation, ResourceUnits) :
+                throw new Exception("invalid shipping method");
+
+            Route.AddTransport(transport);
+        }
+    }
+
+    public class DeliverToWarehouseTransitResolutionAction : TransitResolutionAction
+    {
+        public DeliverToWarehouseTransitResolutionAction(Warehouse warehouse, IEnumerable<Resource> resourceDeposit)
+        {
+            ResourceDeposit = resourceDeposit;
+        }
+
+        public Warehouse Warehouse { get; }
+        public IEnumerable<Resource> ResourceDeposit { get; }
+
+        public override void Execute(GameBoard gameBoard)
+        {
+            Warehouse.ReceiveResources(ResourceDeposit, gameBoard.SellOffPile);
+        }
+    }
+
+    public class ProgressPurchaseOrderTransitResolutionAction : TransitResolutionAction
+    {
+        public ProgressPurchaseOrderTransitResolutionAction(PurchaseOrder purchaseOrder, IEnumerable<Resource> resourceDeposit)
+        {
+            PurchaseOrder = purchaseOrder;
+            ResourceDeposits = resourceDeposit;
+        }
+
+        public PurchaseOrder PurchaseOrder { get; }
+        public IEnumerable<Resource> ResourceDeposits { get; }
+
+        public override void Execute(GameBoard gameBoard)
+        {
+            PurchaseOrder.Progress(ResourceDeposits, gameBoard.SellOffPile);
+        }
     }
 }
