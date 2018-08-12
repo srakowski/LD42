@@ -19,7 +19,9 @@ namespace LD42.MiningLogisticsGame
             Content.RootDirectory = "Content";
 
             var gameStateManager = new GameStateManager(this);
-            gameStateManager.AddGameState(new GameplayState());
+            //gameStateManager.AddGameState(new GameplayState());
+            gameStateManager.AddGameState(new LastMinuteGame());
+
             Components.Add(gameStateManager);
 
             var bs = new BehaviorSystem(this, gameStateManager);
@@ -59,14 +61,50 @@ namespace LD42.MiningLogisticsGame
             Load<Texture2D>("cbtrue");
             Load<Texture2D>("cbfalse");
             Load<Texture2D>("uparrow");
+            Load<Texture2D>("cu");
+            Load<Texture2D>("fe");
+            Load<Texture2D>("ag");
+            Load<Texture2D>("zn");
             Load<SpriteFont>("large");
+            Load<SpriteFont>("location");
             Load<SpriteFont>("message");
+            Load<SpriteFont>("status");
         }
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(new Color(22, 22, 27));
             base.Draw(gameTime);
+        }
+    }
+
+    class LastMinuteGame : GameState
+    {
+        public LastMinuteGame()
+        {
+            var grid = new Entity[4, 4];
+
+            var fe = GameContent.LazyGet<Texture2D>("fe");
+            var ag = GameContent.LazyGet<Texture2D>("ag");
+            var cu = GameContent.LazyGet<Texture2D>("cu");
+            var zn = GameContent.LazyGet<Texture2D>("zn");
+
+            for (int x = 0; x < 4; x++)
+                for (int y = 0; y < 4; y++)
+                {
+                    grid[x, y] =
+                        Entity.
+                            Empty
+                            .AddComponent(new Transform { Position = new Vector2(100 + (x * 150), 100 + (y * 150)) })
+                            .AddComponent(new Sprite(fe));
+
+                    this.AddEntity(grid[x, y]);
+                }
+
+            Entity
+                .Empty
+                .AddComponent(new Transform { Position = new Vector2(1000, 150) })
+                .AddComponent(new Sprite(GameContent.LazyGet<Texture2D>("ludare")));
         }
     }
 }

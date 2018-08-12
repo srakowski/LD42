@@ -152,8 +152,15 @@ namespace LD42
                 }
 
                 // produce mine resources
+                var cards = new List<ICard>();
                 foreach (var mine in gameBoardMap.Mines)
-                    mine.ProcessRound();
+                {
+                    var c = mine.ProcessRound();
+                    if (c != null) cards.Add(c);
+                }
+                yield return new CardsMessage(
+                    $"You pulled these cards. Your mines have added the amounts to their storage yards.",
+                    cards);
 
                 // increment transports
                 foreach (var transport in gameBoardMap.Routes.SelectMany(r => r.Transports))
@@ -237,6 +244,14 @@ namespace LD42
         public string Description { get; }
         public PlayerAction Action { get; set; }
     }
+
+    public class Pass : PlayerAction
+    {
+        public override void Execute(GameBoard gameBoard)
+        {
+        }
+    }
+
 
     public class ShipResourceAction : PlayerAction
     {

@@ -314,8 +314,9 @@ namespace LD42
         public abstract Warehouse Storage { get; }
         public abstract string ResourceTypeDescription { get; }
         public abstract bool ShutdownTooManyTimes { get; }
+        public abstract int DaysShutDown { get; }
 
-        public abstract void ProcessRound();
+        public abstract ICard ProcessRound();
         public abstract void ProduceFromCard(MineOutputCard card);
         public abstract IEnumerable<Resource> GenerateResourcesForCard(MineOutputCard card);
     }
@@ -337,18 +338,21 @@ namespace LD42
 
         public override string ResourceTypeDescription => typeof(T).Name;
 
-        public int DaysShutDown => _daysShutDown;
+        public override int DaysShutDown => _daysShutDown;
         public override bool ShutdownTooManyTimes => _daysShutDown >= GameConfiguration.MaxCumulativeMineShutdowns;
 
-        public override void ProcessRound()
+        public override ICard ProcessRound()
         {
             if (Storage.IsFull)
             {
                 _daysShutDown++;
+                return null;
             }
             else
             {
-                ProduceFromCard(Deck.DrawOne());
+                var card = Deck.DrawOne();
+                ProduceFromCard(card);
+                return card;
             }
         }
 

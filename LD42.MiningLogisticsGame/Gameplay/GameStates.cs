@@ -17,7 +17,7 @@ namespace LD42.MiningLogisticsGame.Gameplay
 
             Entity
                 .Empty
-                .AddComponent(new GameStepBehavior(play, this))
+                .AddComponent(new GameStepBehavior(play, this, game.GameBoard))
                 .AddToState(this);
 
             Entity
@@ -51,6 +51,44 @@ namespace LD42.MiningLogisticsGame.Gameplay
                     .AddToState(this);
 
             }
+
+
+            foreach (var mine in game.GameBoard.Mines)
+            {
+                var loc = Prefabs.GetWarehousePosition(mine.Storage) - 
+                    new Vector2(30, 0);
+
+                var gauge = Entity.Empty
+                    .AddComponent(new Transform { Position = loc });
+
+                for (int i = 0; i < GameConfiguration.MaxCumulativeMineShutdowns; i++)
+                {
+                    gauge.AddChild(Entity.Empty
+                        .AddComponent(new Transform { Position = new Vector2(4, 8 + (i * 14.5f)), Scale = 1.1f })
+                        .AddComponent(new Sprite(Texture2D("shutdownpip"), color: Color.Red))
+                        .AddComponent(new MinShutdownPipBehavior(i, mine))
+                    );
+                }
+
+                gauge.AddToState(this);
+            }
+
+            var sellOff = Entity
+                .Empty
+                .AddComponent(new Transform { Position = new Vector2(1730, 636) });
+                
+
+            for (int i = 0; i < GameConfiguration.MaxSellOffPile; i++)
+            {
+                sellOff.AddChild(Entity
+                    .Empty
+                    .AddComponent(new Transform())
+                    .AddComponent(new SellOfPipBehavior(i, game.GameBoard.SellOffPile))
+                    .AddComponent(new Sprite(Texture2D("ironpip")))
+                );
+            }
+                
+            sellOff.AddToState(this);
 
             //foreach (var mine in game.GameBoard.Locations.Select(l => l.Occupant).OfType<Mine>())
             //{
@@ -108,7 +146,7 @@ namespace LD42.MiningLogisticsGame.Gameplay
             return wh;
         }
 
-        private static Vector2 GetWarehousePosition(Warehouse warehouse)
+        public static Vector2 GetWarehousePosition(Warehouse warehouse)
         {
             var ln = warehouse.Location.Name;
             if (ln == "Seattle") return new Vector2(114, 90);

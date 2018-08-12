@@ -16,11 +16,13 @@ namespace LD42.MiningLogisticsGame.Gameplay
         private GameState state;
         private List<Entity> prevDisplayEntities = new List<Entity>();
         private object awaiting = null;
+        private GameBoard gameBoard;
 
-        public GameStepBehavior(IEnumerator play, GameState state)
+        public GameStepBehavior(IEnumerator play, GameState state, GameBoard gameBoard)
         {
             this.play = play;
             this.state = state;
+            this.gameBoard = gameBoard;
         }
 
         public override void Update()
@@ -97,6 +99,10 @@ namespace LD42.MiningLogisticsGame.Gameplay
                     .AddToState(state));
                 awaiting = ppo;
             }
+            else if (play.Current is PlayerActionRequest pra)
+            {
+                pra.Action = new Pass();
+            }
         }
 
         private void AddMessage(string text)
@@ -125,18 +131,33 @@ namespace LD42.MiningLogisticsGame.Gameplay
 
             c.AddToState(state);
             prevDisplayEntities.Add(c);
+            prevDisplayEntities.AddRange(c.Children);
         }
 
         public static Entity PopulateCardEntity(ICard card, Entity c)
         {
-            if (card is LocationCard)
+            if (card is LocationCard loc)
             {
                 c = c.AddComponent(new Sprite(Texture2D("locationcard")));
+                var x = 0;
+                foreach (var part in loc.Location.Name.Split())
+                {
+                    c.AddChild(Entity.Empty
+                        .AddComponent(new Transform { Position = new Vector2(12, 72 + (x * 16)) })
+                        .AddComponent(new TextSprite(SpriteFont("location"), part, color: Color.Black))
+                    );
+                    x++;
+                }                
             }
             else if (card is MineOutputCard resource)
             {
                 c = c.AddComponent(
                     new Sprite(Texture2D($"{resource.Mine.ResourceTypeDescription.ToLower()}card")));
+
+                c.AddChild(Entity.Empty
+                    .AddComponent(new Transform { Position = new Vector2(24, 24) })
+                    .AddComponent(new TextSprite(SpriteFont("large"), $"+{resource.ResourceUnitsMined}", color: Color.Black))
+                    );
             }
             else if (card is CorporationCard corp)
             {
@@ -147,6 +168,27 @@ namespace LD42.MiningLogisticsGame.Gameplay
             {
                 c = c.AddComponent(
                     new Sprite(Texture2D($"salecard")));
+
+                c.AddChild(Entity.Empty
+                    .AddComponent(new Transform { Position = new Vector2(56, 8) })
+                    .AddComponent(new TextSprite(SpriteFont("location"), $"{saleCard.RequestedSilver}", color: Color.Black))
+                    );
+                c.AddChild(Entity.Empty
+                    .AddComponent(new Transform { Position = new Vector2(56, 30) })
+                    .AddComponent(new TextSprite(SpriteFont("location"), $"{saleCard.RequestedIron}", color: Color.Black))
+                    );
+                c.AddChild(Entity.Empty
+                    .AddComponent(new Transform { Position = new Vector2(56, 52) })
+                    .AddComponent(new TextSprite(SpriteFont("location"), $"{saleCard.RequestedCopper}", color: Color.Black))
+                    );
+                c.AddChild(Entity.Empty
+                    .AddComponent(new Transform { Position = new Vector2(56, 76) })
+                    .AddComponent(new TextSprite(SpriteFont("location"), $"{saleCard.RequestedZinc}", color: Color.Black))
+                    );
+                c.AddChild(Entity.Empty
+                    .AddComponent(new Transform { Position = new Vector2(56, 98) })
+                    .AddComponent(new TextSprite(SpriteFont("location"), $"{saleCard.RoundsRequestedIn}", color: Color.Black))
+                    );
             }
 
             return c;
@@ -290,6 +332,32 @@ namespace LD42.MiningLogisticsGame.Gameplay
         }
     }
 
+    internal class MinShutdownPipBehavior : Behavior
+    {
+        private int i;
+        private Mine mine;
+
+        public MinShutdownPipBehavior(int i, Mine mine)
+        {
+            this.i = i;
+            this.mine = mine;
+        }
+
+        public override void Initialize()
+        {
+            base.Initialize();
+            Entity.GetComponent<Sprite>().Render = false;
+        }
+
+        public override void Update()
+        {
+            if (mine.DaysShutDown >= (i + 1))
+            {
+                Entity.GetComponent<Sprite>().Render = true;
+            }
+        }
+    }
+
     class ShowWarehousesBehavior : Behavior
     {
         private GameBoard gameBoard;
@@ -355,11 +423,109 @@ namespace LD42.MiningLogisticsGame.Gameplay
                     x++;
                 }
 
-                poRow.AddToState(state);
+                poRow.AddChild(Entity
+                    .Empty
+                    .AddComponent(new Transform { Position = new Vector2((x * 113) + 12, 9) })
+                    .AddComponent(new POWatcherBehavior(gameBoard, state, po, Vector2.Zero))
+                );
 
+                poRow.AddToState(state);
+                
                 po.Established = true;
             }
         }
     }
 
+    class POWatcherBehavior : Behavior
+    {
+        private GameBoard gameBoard;
+        private GameState state;
+        private PurchaseOrder po;
+        private List<Entity> added = new List<Entity>();
+
+        public POWatcherBehavior(GameBoard gameBoard, GameState state, PurchaseOrder po, Vector2 drawLoc)
+        {
+            this.gameBoard = gameBoard;
+            this.state = state;
+            this.po = po;
+        }
+
+        public override void Initialize()
+        {
+            base.Initialize();
+        }
+
+        public override void Update()
+        {
+            var message = "";
+            if (!po.HasBeenFulfilled)
+            {
+                message = "Status:\n" +
+                $"Ag: {po.Resources.OfType<Resource.Silver>().Count()}/{po.Sale.RequestedSilver}\n" +
+                $"Fe: {po.Resources.OfType<Resource.Iron>().Count()}/{po.Sale.RequestedIron}\n" +
+                $"Cu: {po.Resources.OfType<Resource.Copper>().Count()}/{po.Sale.RequestedCopper}\n" +
+                $"Zn: {po.Resources.OfType<Resource.Zinc>().Count()}/{po.Sale.RequestedZinc}\n" +
+                (po.DueInRounds < 0 ?
+                    $"Over due!" :
+                    $"Due {Math.Abs(po.DueInRounds)}");
+            }
+            else
+            {
+                message = "This PO has\n" +
+                    "been fulfilled!";
+            }
+
+            added.ForEach(state.RemoveEntity);
+            added.Clear();
+            var x = 0;
+            foreach (var part in message.Split('\n'))
+            {
+                var c = Entity.Empty
+                    .AddComponent(new Transform { Position = new Vector2(12, 12 + (x * 16)) })
+                    .AddComponent(new TextSprite(SpriteFont("status"), part, color: Color.Black));
+
+                Entity.AddChild(c);
+                added.Add(c);
+                state.AddEntity(c);
+                x++;
+            }
+        }
+    }
+
+    internal class SellOfPipBehavior : Behavior
+    {
+        private int pipNumber;
+        private SellOffPile sellOffPile;
+        private Sprite sprite;
+
+        public SellOfPipBehavior(int pipNumber, SellOffPile sellOffPile)
+        {
+            this.pipNumber = pipNumber;
+            this.sellOffPile = sellOffPile;
+        }
+
+        public override void Initialize()
+        {
+            this.sprite = this.Entity.GetComponent<Sprite>();
+            var transform = this.Entity.GetComponent<Transform>();
+            transform.Position = new Vector2(
+                ((pipNumber / 6) * 18.75f) + 6.75f,
+                ((pipNumber % 6) * 18.75f) + 6.75f);
+        }
+
+        public override void Update()
+        {
+            var rs = sellOffPile.ResourceUnits.ElementAtOrDefault(pipNumber);
+            if (rs == null)
+            {
+                sprite.Render = false;
+                return;
+            }
+            sprite.Render = true;
+            if (rs is Resource.Iron) sprite.Texture = GameContent.LazyGet<Texture2D>("ironpip");
+            else if (rs is Resource.Copper) sprite.Texture = GameContent.LazyGet<Texture2D>("copperpip");
+            else if (rs is Resource.Silver) sprite.Texture = GameContent.LazyGet<Texture2D>("silverpip");
+            else if (rs is Resource.Zinc) sprite.Texture = GameContent.LazyGet<Texture2D>("zincpip");
+        }
+    }
 }
