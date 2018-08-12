@@ -35,7 +35,7 @@ namespace LD42
         public const int InitialCorporationFavor = 5;
         public const int CorporationFavorToLandContract = 10;
         public const int MaxSellOffPile = 16;
-        public const int MaxCumulativeMineShutdowns = 0;
+        public const int MaxCumulativeMineShutdowns = 5;
     }
 
     public interface ICard
