@@ -139,9 +139,9 @@ namespace PrototypeWinFormsUI
                 MessageControl = new Label { Text = par.Description };
             }
 
-            for (int i = 0; i < game.GameBoard.ActivePurchaseOrders.Length; i++)
+            for (int i = 0; i < game.GameBoard.PurchaseOrderSlots.Length; i++)
             {
-                var po = game.GameBoard.ActivePurchaseOrders[i];
+                var po = game.GameBoard.PurchaseOrderSlots[i];
                 if (po == null) continue;
 
                 ConfigureCardControl(po.Corporation, purchaseOrderControls[i].CorporationCard);

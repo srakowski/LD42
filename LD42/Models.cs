@@ -7,8 +7,7 @@ namespace LD42
     static public class GameConfiguration
     {
         public const int WeeksToWin = 9;
-        public const int WarehouseCapacityInResourceUnits = 13;
-        public const int WarehouseOverflowCapacityInResourceUnits = 3;
+        public const int WarehouseCapacityInResourceUnits = 16;
         public const int MaxResourceMiningCardValue = 4;
         public const int LocationCardsPerLocation = 10;
         public const int CorporationCardsPerCoporation = 10;
@@ -28,6 +27,12 @@ namespace LD42
         public const int ZincHeavySale = 3;
 
         public const int ActionPointsPerRound = 5;
+
+        public const int TruckMaxResources = 4;
+        public const int TrainMaxResources = 8;
+        public const int FreighterShipMaxResources = 12;
+
+        public const int InitialCorporationFavor = 5;
     }
 
     public interface ICard
@@ -129,10 +134,53 @@ namespace LD42
         }
     }
 
-    public class ResourceTransport
+    public abstract class ResourceTransport
     {
-        public IEnumerable<Resource> ResourceUnitsInTransit { get; private set; }
+        protected ResourceTransport(
+            Location to, Location from, 
+            IEnumerable<Resource> resourceUnits,
+            int roundsToComplete)
+        {
+            ToLocation = to;
+            FromLocation = from;
+            ResourceUnits = resourceUnits;
+            RoundsToComplete = roundsToComplete;
+            RoundsCompleted = 1;
+        }
+        public Location ToLocation { get; }
+        public Location FromLocation { get; }
+        public IEnumerable<Resource> ResourceUnits { get; }
+        public int RoundsToComplete { get; }
+        public int RoundsCompleted { get; private set; }
     }
+
+    public class Truck : ResourceTransport
+    {
+        public Truck(Location to, Location from, IEnumerable<Resource> resourceUnits) : base(to, from, resourceUnits, 1)
+        {
+            if (this.ResourceUnits.Count() > GameConfiguration.FreighterShipMaxResources)
+                throw new Exception("this is carr ying too much");
+        }
+    }
+
+    public class Train : ResourceTransport
+    {
+        public Train(Location to, Location from, IEnumerable<Resource> resourceUnits) : base(to, from, resourceUnits, 2)
+        {
+            if (this.ResourceUnits.Count() > GameConfiguration.TrainMaxResources)
+                throw new Exception("this is carr ying too much");
+        }
+    }
+
+    public class FreighterShip : ResourceTransport
+    {
+        public FreighterShip(Location to, Location from, IEnumerable<Resource> resourceUnits) : base(to, from, resourceUnits, 3)
+        {
+            if (this.ResourceUnits.Count() > GameConfiguration.TruckMaxResources)
+                throw new Exception("this is carr ying too much");
+        }
+    }
+
 
     [Flags]
     public enum ShippingMethods
@@ -144,37 +192,40 @@ namespace LD42
 
     public class Route
     {
-
-        private List<ResourceTransport> _truckTransports = new List<ResourceTransport>();
-        private List<ResourceTransport> _trainTransports = new List<ResourceTransport>();
+        private List<ResourceTransport> _transports = new List<ResourceTransport>();
 
         public Route(ShippingMethods routeType, Location l1, Location l2)
         {
-            RouteType = routeType;
+            EligibleShippingMethods = routeType;
             Location1 = l1;
             Location2 = l2;
         }
 
-        private ShippingMethods RouteType { get; }
+        public ShippingMethods EligibleShippingMethods { get; }
         public Location Location1 { get; }
         public Location Location2 { get; }
-        
-        public IEnumerable<ResourceTransport> TruckTransports => _truckTransports;
-        public IEnumerable<ResourceTransport> TrainTransports => _trainTransports;
+
+        public IEnumerable<ResourceTransport> Transports => _transports;
+        public IEnumerable<Truck> TruckTransports => _transports.OfType<Truck>();
+        public IEnumerable<Train> TrainTransports => _transports.OfType<Train>();
+        public IEnumerable<FreighterShip> FreighterShipTransports => _transports.OfType<FreighterShip>();
 
         internal void BindLocationRoutes()
         {
             Location1.AddRoute(this);
             Location2.AddRoute(this);
         }
+
+        internal void AddTransport(ResourceTransport transport)
+        {
+            _transports.Add(transport);
+        }
     }
 
     public class Warehouse : ILocationOccupant
     {
         private List<Resource> unitsOfResources = new List<Resource>();
-        private List<Resource> overflowUnitsOfResources = new List<Resource>();
         public int ResourceCapacityInUnits { get; } = GameConfiguration.WarehouseCapacityInResourceUnits;
-        public int OverflowCapacityInUnits { get; } = GameConfiguration.WarehouseOverflowCapacityInResourceUnits;
         public int TotalUnits => unitsOfResources.Count;
         public IEnumerable<Resource> UnitsOfResources => unitsOfResources;
 
@@ -183,7 +234,6 @@ namespace LD42
             var resourceQueue = new Queue<Resource>(resources);
             while (resourceQueue.Any() && TotalUnits < ResourceCapacityInUnits)
                 unitsOfResources.Add(resourceQueue.Dequeue());
-            overflowUnitsOfResources.AddRange(resourceQueue);
         }
     }
 
@@ -266,19 +316,19 @@ namespace LD42
             int requestedSilver,
             int requestedIron)
         {
-            RequestedInXRounds = requestedInXRounds;
+            RoundsRequestedIn = requestedInXRounds;
             RequestedCopper = requestedCopper;
             RequestedZinc = requestedZinc;
             RequestedSilver = requestedSilver;
             RequestedIron = requestedIron;
         }
-        public int RequestedInXRounds { get; }
+        public int RoundsRequestedIn { get; }
         public int RequestedCopper { get; }
         public int RequestedZinc { get; }
         public int RequestedSilver { get; }
         public int RequestedIron { get; }
         public string Description => 
-            $"Rounds: {RequestedInXRounds}\n" +
+            $"Rounds: {RoundsRequestedIn}\n" +
             $"Copper: {RequestedCopper}\n" +
             $"Zinc: {RequestedZinc}\n" +
             $"Silver: {RequestedSilver}\n" +
@@ -316,11 +366,24 @@ namespace LD42
 
     public class Corporation
     {
+        private int _favor = GameConfiguration.InitialCorporationFavor;
+
         public Corporation(string name)
         {
             Name = name;
         }
         public string Name { get; }
+        public int Favor => _favor;
+
+        public void GainFavor()
+        {
+            _favor++;
+        }
+
+        public void LoseFavor()
+        {
+            _favor--;
+        }
     }
 
     public struct CorporationCard : ICard
@@ -360,6 +423,9 @@ namespace LD42
 
     public class PurchaseOrder
     {
+        private List<Resource> _resources = new List<Resource>();
+        private int _roundsSinceStart = 0;
+        
         public PurchaseOrder(
             CorporationCard corporationCard,
             SaleCard saleCard,
@@ -369,9 +435,57 @@ namespace LD42
             Sale = saleCard;
             ShipToLocation = shipToLocation;
         }
+
+        public IEnumerable<Resource> Resources => _resources;
         public CorporationCard Corporation { get; }
         public SaleCard Sale { get; }
         public LocationCard ShipToLocation { get; }
+        public int DueInRounds => Sale.RoundsRequestedIn - _roundsSinceStart;
+
+        public bool HasBeenFulfilled =>
+            Sale.RequestedIron == _resources.OfType<Resource.Iron>().Count() &&
+            Sale.RequestedSilver == _resources.OfType<Resource.Silver>().Count() &&
+            Sale.RequestedCopper == _resources.OfType<Resource.Copper>().Count() &&
+            Sale.RequestedZinc == _resources.OfType<Resource.Zinc>().Count();
+
+        public void ProcessRound()
+        {
+            if (HasBeenFulfilled) return;
+            _roundsSinceStart++;
+            if (DueInRounds < 0)
+                Corporation.Corporation.LoseFavor();
+        }
+
+        public void Progress(IEnumerable<Resource> resourceDeposit, SellOffPile sellOffPile)
+        {
+            _resources.AddRange(resourceDeposit);
+            SellOffExcess<Resource.Iron>(sellOffPile, Sale.RequestedIron);
+            SellOffExcess<Resource.Copper>(sellOffPile, Sale.RequestedCopper);
+            SellOffExcess<Resource.Silver>(sellOffPile, Sale.RequestedSilver);
+            SellOffExcess<Resource.Zinc>(sellOffPile, Sale.RequestedZinc);
+        }
+
+        private void SellOffExcess<T>(SellOffPile sellOffPile, int needed) where T : Resource
+        {
+            var extra = _resources.OfType<T>().Count() - needed;
+            if (extra > 0)
+            {
+                var extras = _resources.OfType<T>().Take(extra);
+                foreach (var ex in extras)
+                {
+                    _resources.Remove(ex);
+                    sellOffPile.AddToPile(ex);
+                }                    
+            }
+        }
+    }
+
+    public class SellOffPile
+    {
+        private List<Resource> resourceUnits = new List<Resource>();
+        public IEnumerable<Resource> ResourceUnits => resourceUnits;
+        internal void AddToPile<T>(T ex) where T : Resource =>
+            resourceUnits.Add(ex);
     }
 
     public class GameBoard
@@ -408,7 +522,7 @@ namespace LD42
             CorporationsDeck = corporationsDeck;
             SalesDeck = salesDeck;
             Routes = routes;
-
+            SellOffPile = new SellOffPile();
         }
 
         public IEnumerable<Mine> Mines { get; }
@@ -417,8 +531,9 @@ namespace LD42
         public CorporationsDeck CorporationsDeck { get; }
         public SalesDeck SalesDeck { get; }
         public IEnumerable<Route> Routes { get; }
-        public PurchaseOrder[] ActivePurchaseOrders { get; } = new PurchaseOrder[3];
-        public int ActivePurchaseOrderSlotCount => ActivePurchaseOrders.Length;
+        public PurchaseOrder[] PurchaseOrderSlots { get; } = new PurchaseOrder[3];
+        public int ActivePurchaseOrderSlotCount => PurchaseOrderSlots.Length;
+        public SellOffPile SellOffPile { get; }
 
         public static GameBoard Create(Random random)
         {

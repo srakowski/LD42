@@ -9,6 +9,9 @@ namespace LD42
     {
         public GameBoard GameBoard { get; private set; }
 
+        public bool GameIsWon { get; private set; }
+        public bool GameIsLost { get; private set; }
+
         public IEnumerable Play()
         {
             var random = new Random();
@@ -57,34 +60,49 @@ namespace LD42
                 warehouse.ReceiveResources(resources);
             }
 
-            // draw 5 corporation cards and place them in a row
-            // foreach corporation card draw a sale card and place it next to the corporation
-            // foreach corporation card fraw a location card and place it next to the sale card
-            // these are 5 prospective sales, you must select 3 to fill active PO slots
-            var initialPOOptions = Enumerable
-                .Range(0, GameConfiguration.PurchaseOrderOptionCount)
-                .Select(_ => new PurchaseOrder(
-                    gameBoardMap.CorporationsDeck.DrawOne(),
-                    gameBoardMap.SalesDeck.DrawOne(),
-                    gameBoardMap.LocationsDeck.DrawOne()
-                ))
-                .ToArray();
-
-            var picks = new PickPurchaseOrders(initialPOOptions, gameBoardMap.ActivePurchaseOrderSlotCount);
-            yield return picks;
-
-            if (picks.SelectedPurchaseOrders.Count() != gameBoardMap.ActivePurchaseOrderSlotCount)
-                throw new Exception("did not make enough PO selections");
-
-            // move each purchase order to one of the active PO slots
-            var poQueue = new Queue<PurchaseOrder>(picks.SelectedPurchaseOrders);
-            for (int i = 0; i < gameBoardMap.ActivePurchaseOrderSlotCount; i++)
-                gameBoardMap.ActivePurchaseOrders[i] = poQueue.Dequeue();
-
-            for (int round = 0; round < GameConfiguration.ActionPointsPerRound; round++)
+            while (!GameIsWon && !GameIsLost)
             {
-                var playerActionRequest = new PlayerActionRequest($"Round {round + 1}: initiate resource moves", round == 0);
-                yield return playerActionRequest;
+                // draw 5 corporation cards and place them in a row
+                // foreach corporation card draw a sale card and place it next to the corporation
+                // foreach corporation card fraw a location card and place it next to the sale card
+                // these are 5 prospective sales, you must select up to 3 to fill active PO slots
+                var poOptions = Enumerable
+                    .Range(0, GameConfiguration.PurchaseOrderOptionCount)
+                    .Select(_ => new PurchaseOrder(
+                        gameBoardMap.CorporationsDeck.DrawOne(),
+                        gameBoardMap.SalesDeck.DrawOne(),
+                        gameBoardMap.LocationsDeck.DrawOne()
+                    ))
+                    .ToArray();
+
+                if (poOptions.Any())
+                {
+                    var picks = new PickPurchaseOrders(poOptions, gameBoardMap.PurchaseOrderSlots.Count(s => s == null));
+                    yield return picks;
+
+                    if (picks.SelectedPurchaseOrders.Count() != gameBoardMap.PurchaseOrderSlots.Count(s => s == null))
+                        throw new Exception("did not make enough PO selections");
+
+                    // move each purchase order to one of the active PO slots
+                    var poQueue = new Queue<PurchaseOrder>(picks.SelectedPurchaseOrders);
+                    for (int i = 0; i < gameBoardMap.PurchaseOrderSlots.Length; i++)
+                        if (gameBoardMap.PurchaseOrderSlots[i] == null)
+                            gameBoardMap.PurchaseOrderSlots[i] = poQueue.Dequeue();
+                }
+
+                for (int round = 0; round < GameConfiguration.ActionPointsPerRound; round++)
+                {
+                    var playerActionRequest = new PlayerActionRequest($"Round {round + 1}: initiate resource moves", round == 0);
+                    yield return playerActionRequest;
+
+                    var action = playerActionRequest.Action;
+                    if (action == null)
+                        throw new Exception("no player action was passed back");
+
+                    action.Execute(GameBoard);
+
+                    if (action is BuildWarehouse) break;
+                }
             }
         }
     }
@@ -127,7 +145,10 @@ namespace LD42
         public void RemoveSelection(PurchaseOrder purchaseOrder) => _selected.Remove(purchaseOrder);
     }
 
-    public class PlayerAction { }
+    public abstract class PlayerAction
+    {
+        public abstract void Execute(GameBoard gameBoard);
+    }
 
     public class PlayerActionRequest : PlayerInteraction
     {
@@ -156,17 +177,36 @@ namespace LD42
         public Location FromLocation { get; }
         public Location ToLocation { get; }
         public ShippingMethods Method { get; }
+
+        public override void Execute(GameBoard gameBoard)
+        {
+            if (!Route.EligibleShippingMethods.HasFlag(Method))
+                throw new Exception("Route does not have selected shipping method");
+
+            var transport =
+                Method == ShippingMethods.Ship ? new FreighterShip(ToLocation, FromLocation, ResourceUnits) :
+                Method == ShippingMethods.Train ? new Train(ToLocation, FromLocation, ResourceUnits) :
+                Method == ShippingMethods.Truck ? (ResourceTransport)new Truck(ToLocation, FromLocation, ResourceUnits) :
+                throw new Exception("invalid shipping method");
+
+            Route.AddTransport(transport);
+        }
     }
 
-    public class FulfillPurchaseOrder : PlayerAction
+    public class ProgressPurchaseOrder : PlayerAction
     {
-        public FulfillPurchaseOrder(PurchaseOrder purchaseOrder, IEnumerable<Resource> resourceUnits)
+        public ProgressPurchaseOrder(PurchaseOrder purchaseOrder, IEnumerable<Resource> resourceDeposit)
         {
             PurchaseOrder = purchaseOrder;
-            ResourceUnits = resourceUnits;
+            ResourceDeposits = resourceDeposit;
         }
         public PurchaseOrder PurchaseOrder { get; }
-        public IEnumerable<Resource> ResourceUnits { get; }
+        public IEnumerable<Resource> ResourceDeposits { get; }
+
+        public override void Execute(GameBoard gameBoard)
+        {
+            PurchaseOrder.Progress(ResourceDeposits, gameBoard.SellOffPile);
+        }
     }
 
     public class BuildWarehouse : PlayerAction
@@ -175,6 +215,17 @@ namespace LD42
         {
             Location = location;
         }
+
         public Location Location { get; set; }
+
+        public override void Execute(GameBoard gameBoard)
+        {
+            if (!(Location.Occupant is EmptyLocation)) throw new Exception("trying to place warehouse where there already is something");
+            Location.SetOccupant(new Warehouse());
+        }
+    }
+
+    public class TransitResolutionActionRequest
+    {
     }
 }
